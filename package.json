@@ -1,6 +1,6 @@
 {
   "name": "deepseek-web-import",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Import chat.deepseek.com conversations into DeepSeek Harness as resumable sessions, from a settings-page UI.",
   "type": "module",
   "repository": {
@@ -25,6 +25,7 @@
     "lib",
     "cordis.patch.yml",
     "README.md",
+    "README.zh.md",
     "LICENSE"
   ],
   "keywords": [
@@ -39,7 +40,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "node --test test/events.test.mjs test/host-routes.test.mjs test/transport.test.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
     "test:serve": "echo 'run test/compat.mjs and test/live-import.mjs from a DSH install directory (see docs/COMPATIBILITY.md)'"
   }
 }

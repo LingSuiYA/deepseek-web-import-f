@@ -8,7 +8,7 @@
 
 | 格式 | 由哪些版本写入 | Session 头 | `assistant/message` | `sessionPersistence` 接口 |
 |------|----------------|-----------|---------------------|---------------------------|
-| v0 | 0.1.1-rc.1 … 0.1.2-rc.1 | `version,id,createdAt,cwd,seedLength?`（**没有 `isSeeded`**） | 没有 `stream` 字段 | 旧式：`create(meta): Promise<void>` + `append(id, events)` |
+| v0 | 0.1.0-rc.7 … 0.1.2-rc.1 | `version,id,createdAt,cwd,seedLength?`（**没有 `isSeeded`**） | 没有 `stream` 字段 | 旧式：`create(meta): Promise<void>` + `append(id, events)` |
 | v1 | 未发现发布版本写入 v1 | 按 v0 建模，运行时再按证据修正¹ | 没有 `stream` | 旧式 |
 | v2 | 0.1.3-alpha.2 | `…,isSeeded`（显式拒绝 `seedLength`） | `stream` 必填 | 句柄式：`create(header) → SessionHandle`、`open/flush/stat/list` |
 | v3 | 0.1.5-alpha.1 … 0.1.6-alpha.2 | 同 v2 | `stream` 必填 | 句柄式 |
@@ -91,6 +91,18 @@ node <repo>/test/cross-version.mjs read /tmp/xver/v0
 # PASS read session-cross-v0: stored v4 → 21 events, 6/6 messages
 ```
 
+`21` 不是笔误：写入端是 20 条事件（`compat.mjs` 的同一套合成对话），
+读取端在跨代迁移时（v0→v1→v2→v3→v4）会插入一条 system 头事件，所以新版本看到的是 21 条。
+
+在 0.2.0-rc.2 上的实测（写用 v0 时代后端 0.1.1-rc.2，读用 0.2.0-rc.2）：
+
+```
+WROTE session-cross-v0 format v0 20 events
+PASS read session-cross-v0: stored v4 → 21 events, 6/6 messages
+```
+
+即：**旧版本导入的会话在升级到 0.2.0-rc.2 后仍能迁移并打开**（前提是导入时事件顺序合法 —— 见上文 `turn/start → step/start → user/message`）。
+
 ### 4) 一键矩阵
 
 ```sh
@@ -105,14 +117,30 @@ sh test/matrix.sh
 
 ```
 v0  0.1.1-rc.2        PASS format v0 | stored v0 | 20 events | 6 messages | reasoning=true
+v0  0.1.0-rc.7        PASS format v0 | stored v0 | 20 events | 6 messages | reasoning=true
 v2  0.1.3-alpha.2     PASS format v2 | stored v2 | 20 events | 6 messages | reasoning=true
 v3  0.1.6-alpha.2     PASS format v3 | stored v3 | 20 events | 6 messages | reasoning=true
-v4  0.1.7-alpha.1        PASS format v4 | stored v4 | 20 events | 6 messages | reasoning=true
-e2e 0.1.7-alpha.1        PASS live import → format v4, 20 events, 6 messages, attached=1
+v4  0.1.7-alpha.1     PASS format v4 | stored v4 | 20 events | 6 messages | reasoning=true
+v4  0.2.0-rc.2        PASS format v4 | stored v4 | 20 events | 6 messages | reasoning=true | expected v4
+e2e 0.1.7-alpha.1     PASS live import → format v4, 20 events, 6 messages, attached=1
 e2e 0.1.1-rc.2        PASS live import → format v0, 20 events, 6 messages, attached=1
 e2e 0.1.3-alpha.2     PASS live import → format v2, 20 events, 6 messages, attached=1
-单测                 11/11 pass
+单测                   见 `npm test` 输出（全部 `test/*.test.mjs`）
 ```
+
+### 桌面版 0.2.0-rc.2（v4）的验证记录
+
+```sh
+# 在装着 0.2.0-rc.2 各官方包的目录里跑（compilation-of-record 见下）
+npm i @deepseek-ai/cordis @deepseek-ai/dsh-session-persistence-jsonl@0.2.0-rc.2 @deepseek-ai/dsh-session@0.2.0-rc.2
+node <repo>/test/compat.mjs --expect 4
+# → PASS format v4 | stored v4 | 20 events | 6 messages | first="How do I export my chat history?" | reasoning=true | expected v4
+```
+
+该版本的事实依据：`@deepseek-ai/dsh-session@0.2.0-rc.2` 的 `SESSION_FORMAT_VERSION = 4`；
+`dsh-session-persistence-jsonl@0.2.0-rc.2` 的 `create(header)` 返回写句柄（`append`/`flush`/`close`），
+服务级 `append(id, events)`/`readFrom` 已不存在；头部要求 `isSeeded` 必填、`delegationDepth` 必填、
+`assistant/message` 带 `stream`；写出的工件名与桌面版实际一致（`session.v4.jsonl.zstd`）。
 
 v1 没有发布版本写入过它（0.1.1-rc.1、0.1.2-alpha.4/5、0.1.2-rc.1 都是 v0），
 因此 v1 采用与 v0 相同的形状并有单测覆盖；一旦出现写入 v1 的构建，

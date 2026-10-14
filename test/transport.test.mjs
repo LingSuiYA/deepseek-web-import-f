@@ -9,7 +9,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { BODY_LIMIT, REQUEST_SCRIPT, redact, runRequest } from '../lib/transport.js'
+import { BODY_LIMIT, BYTE_LIMIT, REQUEST_SCRIPT, redact, runRequest } from '../lib/transport.js'
 
 /** Start one local HTTP server; returns its port and a stop function. */
 async function serve(handler) {
@@ -79,6 +79,28 @@ test('a response over the limit is reported as truncated, not as a parse failure
     const parsed = JSON.parse((await runChild({ url: `http://127.0.0.1:${port}/big` })).stdout)
     assert.equal(parsed.truncated, true)
     assert.equal(parsed.body.length, BODY_LIMIT)
+  } finally {
+    await stop()
+  }
+})
+
+test('a response over the byte bound is cut off while it arrives, not buffered', async () => {
+  // the character cap alone is not a memory bound — the response is buffered
+  // before it can be measured — so the child also stops at BYTE_LIMIT bytes and
+  // answers immediately instead of collecting the whole thing first
+  const chunk = 'x'.repeat(64 * 1024)
+  const chunks = Math.ceil(BYTE_LIMIT / chunk.length) + 8
+  const { port, stop } = await serve((req, res) => {
+    /* the child destroys the response at the bound, so its own writes fail */
+    res.on('error', () => {})
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    for (let sent = 0; sent < chunks; sent += 1) res.write(chunk)
+    res.end()
+  })
+  try {
+    const parsed = JSON.parse((await runChild({ url: `http://127.0.0.1:${port}/huge` })).stdout)
+    assert.equal(parsed.truncated, true, 'the byte bound is reported as truncation')
+    assert.equal(parsed.body, '', 'nothing of the oversized body is kept')
   } finally {
     await stop()
   }

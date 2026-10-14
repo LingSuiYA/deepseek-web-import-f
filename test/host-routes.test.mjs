@@ -39,12 +39,14 @@ function makeServer() {
 /**
  * Build a plugin context whose transport, store and workspace are all fakes.
  * @param {object} [options] - overrides for the individual fakes.
- * @returns {{ctx: object, calls: object, server: object}} the context, recorded
- *   interactions, and the fake web server.
+ * @returns {{ctx: object, calls: object, server: object, logs: string[]}} the
+ *   context, recorded interactions, the fake web server, and every line the
+ *   plugin wrote to `ctx.logger.warn`.
  */
 function harness(options = {}) {
   const server = options.server ?? makeServer()
   const calls = { created: [], appended: [], attached: [], specs: [], closed: 0 }
+  const logs = []
   const transport = options.transport ?? (() => ({ status: 200, body: deepseekResponse(HISTORY) }))
   const persistence = options.persistence ?? {
     async create(header) {
@@ -77,7 +79,7 @@ function harness(options = {}) {
     resolve: async () => ((options.token ?? 'token').length > 0 ? { value: options.token ?? 'token' } : undefined),
     describe: async () => ({ configured: (options.token ?? 'token').length > 0, writable: true }),
     set: options.credentialsSet ?? (async () => {}),
-    unset: async () => {},
+    unset: options.credentialsUnset ?? (async () => {}),
   }
   const workspaceRegistry = {
     list: () => [{ id: 'ws-1', title: 'ws', path: '/tmp/ws' }],
@@ -98,13 +100,17 @@ function harness(options = {}) {
     sessionPersistence: persistence,
     sandboxPolicy: { workspaceRoot: '/tmp' },
   }
+  /* A composition missing a service is a supported state (every needle is read
+     through ctx.get), so tests need to be able to leave one out. */
+  for (const name of options.omit ?? []) delete services[name]
   const effects = options.effects ?? []
   const ctx = {
     effect(factory) { const dispose = factory(); if (typeof dispose === 'function') effects.push(dispose); return () => {} },
     get: (name) => services[name],
+    logger: { warn: (message) => logs.push(String(message)) },
   }
   apply(ctx)
-  return { ctx, calls, server }
+  return { ctx, calls, server, logs }
 }
 
 /** Call one registered route handler with a JSON body. */
@@ -125,12 +131,18 @@ function post(server, path, body, options = {}) {
         }
         return this
       },
+      /* a real IncomingMessage has both, and readBody calls resume() to drain
+         an oversized request instead of destroying the socket */
+      resume() {},
       destroy() {},
     }
     const headers = {}
     const res = {
       statusCode: 0,
       setHeader(key, value) { headers[key] = value },
+      /* a real ServerResponse is an EventEmitter and the handler subscribes to
+         'error' on it, so the fake has to accept listeners too */
+      on() { return this },
       end(text) { resolve({ status: this.statusCode, json: JSON.parse(text), headers }) },
     }
     route.handler(req, res)
@@ -211,7 +223,9 @@ test('a transport failure is reported as such, not as a malformed reply', async 
   const result = await post(server, '/__deepseek-web-import/listSessions', {})
   assert.equal(result.json.ok, false)
   assert.equal(result.json.error, 'transport')
-  assert.match(result.json.msg, /网络请求失败/)
+  /* the host no longer prefixes a sentence: `error` is the code the browser
+     localizes and `msg` carries the redacted upstream reason */
+  assert.match(result.json.msg, /ENOTFOUND/)
 })
 
 test('an upstream error never echoes the token back to the page', async () => {
@@ -267,7 +281,9 @@ test('a credential store failure never echoes the store message', async () => {
   const result = await post(server, '/__deepseek-web-import/saveToken', { token: 'sk-secret-token-xyz' })
   assert.equal(result.json.ok, false)
   assert.ok(!JSON.stringify(result.json).includes('sk-secret-token-xyz'), 'no secret reaches the page')
-  assert.match(result.json.error, /DSH 日志/)
+  /* the store's complaint is replaced by a stable code the client localizes;
+     the raw text stays in the log (see the log-redaction test below) */
+  assert.equal(result.json.error, 'save_failed')
 })
 
 test('an attach failure is retried, then reported', async () => {
@@ -338,9 +354,16 @@ test('an oversized request body is answered with 413 instead of hanging', async 
         if (ev === 'end') setImmediate(cb)
         return this
       },
+      /* the overflow path drains the request instead of destroying it */
+      resume() {},
       destroy() {},
     }
-    const res = { statusCode: 0, setHeader() {}, end(text) { resolve({ status: this.statusCode, json: JSON.parse(text) }) } }
+    const res = {
+      statusCode: 0,
+      setHeader() {},
+      on() { return this },
+      end(text) { resolve({ status: this.statusCode, json: JSON.parse(text) }) },
+    }
     route.handler(req, res)
   })
   assert.equal(response.status, 413)
@@ -480,4 +503,187 @@ test('an untagged occupant of our path is treated as an earlier instance', () =>
   harness({ server })
   assert.equal(server.exact.size, 8)
   assert.equal(server.exact.get(path).owner, 'deepseek-web-import')
+})
+
+// ---- stable error codes and answer shapes ----
+
+test('a truncated conversation directory is reported by name, like a long history', async () => {
+  // a truncated page would otherwise surface as an unexplained parse failure
+  const { server } = harness({ transport: () => ({ status: 200, body: '{"code":0,"data":', truncated: true }) })
+  const result = await post(server, '/__deepseek-web-import/listSessions', {})
+  assert.equal(result.json.ok, false)
+  assert.equal(result.json.error, 'too_large')
+})
+
+test('an untitled conversation keeps an empty title for the session builder', async () => {
+  // the display placeholder belongs to the browser half; storing it as the real
+  // title would suppress the builder's own fallback
+  const { server } = harness({
+    transport: () => ({
+      status: 200,
+      body: JSON.stringify({
+        code: 0,
+        data: { biz_code: 0, biz_data: { chat_sessions: [{ id: 'c1', title: '' }, { id: 'c2' }, { id: 'c3', title: 'named', updated_at: 1700000000 }] } },
+      }),
+    }),
+  })
+  const result = await post(server, '/__deepseek-web-import/listSessions', {})
+  assert.equal(result.json.ok, true)
+  assert.deepEqual(result.json.sessions.map((s) => s.title), ['', '', 'named'])
+  assert.equal(result.json.sessions[2].updatedAt, 1700000000)
+})
+
+test('a credential store failure is a stable code, and the secret reaches neither the page nor the log', async () => {
+  const secret = 'sk-secret-token-xyz'
+  const { server, logs } = harness({
+    credentialsSet: async () => { throw new Error('credentials-local: invalid value=' + secret) },
+  })
+  const result = await post(server, '/__deepseek-web-import/saveToken', { token: secret })
+  assert.equal(result.status, 200)
+  assert.equal(result.json.ok, false)
+  assert.equal(result.json.error, 'save_failed')
+  assert.ok(!JSON.stringify(result.json).includes(secret), 'no secret reaches the page')
+  assert.equal(logs.length, 1, 'the failure is diagnosed once')
+  assert.match(logs[0], /saveToken failed/)
+  assert.ok(!logs[0].includes(secret), 'no secret reaches the log either')
+  assert.match(logs[0], /\[token\]/, 'the log keeps a redacted trace')
+})
+
+test('a blank token is refused before the store is touched', async () => {
+  let writes = 0
+  const { server } = harness({ credentialsSet: async () => { writes += 1 } })
+  const result = await post(server, '/__deepseek-web-import/saveToken', { token: '   ' })
+  assert.equal(result.json.ok, false)
+  assert.equal(result.json.error, 'token_empty')
+  assert.equal(writes, 0)
+})
+
+test('a refused clear is reported as a failure, not as success', async () => {
+  // the credential store can refuse a clear (read-only file, foreign value)
+  const { server, logs } = harness({ credentialsUnset: async () => { throw new Error('read-only credential store') } })
+  const result = await post(server, '/__deepseek-web-import/clearToken', {})
+  assert.equal(result.json.ok, false)
+  assert.equal(result.json.error, 'save_failed')
+  assert.ok(logs.some((line) => line.includes('clearToken failed')), logs.join('\n'))
+})
+
+test('a missing service is answered with its stable code, never with an internal sentence', async () => {
+  const noCredentials = harness({ omit: ['credentials'] })
+  assert.equal((await post(noCredentials.server, '/__deepseek-web-import/saveToken', { token: 'x' })).json.error, 'credentials_unavailable')
+  assert.equal((await post(noCredentials.server, '/__deepseek-web-import/clearToken', {})).json.error, 'credentials_unavailable')
+  assert.deepEqual((await post(noCredentials.server, '/__deepseek-web-import/tokenStatus', {})).json, { configured: false, writable: false })
+
+  const noRegistry = harness({ omit: ['workspaceRegistry'] })
+  assert.equal((await post(noRegistry.server, '/__deepseek-web-import/listWorkspaces', {})).json.error, 'workspace_registry_unavailable')
+
+  const noSubprocess = harness({ omit: ['subprocess'] })
+  const transport = await post(noSubprocess.server, '/__deepseek-web-import/listSessions', {})
+  assert.equal(transport.json.error, 'subprocess_unavailable')
+  assert.ok(!JSON.stringify(transport.json).includes('服务不可用'), 'the internal sentence is not echoed')
+})
+
+test('an import without a persistence service writes nothing', async () => {
+  const { calls, server } = harness({ omit: ['sessionPersistence'] })
+  const result = await post(server, '/__deepseek-web-import/importToSession', { sessionId: 'c1', workspaceId: 'ws-1' })
+  assert.equal(result.json.ok, false)
+  assert.equal(result.json.error, 'persistence_unavailable', 'a missing service answers with its stable code')
+  assert.equal(calls.created.length, 0)
+  assert.equal(calls.appended.length, 0)
+})
+
+test('the probe route refuses a non-default port on the allowed host', async () => {
+  const { calls, server } = harness()
+  const refused = await post(server, '/__deepseek-web-import/probe', { url: 'https://chat.deepseek.com:8443/x' })
+  assert.equal(refused.json.ok, false)
+  assert.equal(refused.json.error, 'probe_refused')
+  assert.equal(calls.specs.length, 0, 'a foreign port is refused before any request leaves the process')
+
+  const allowed = await post(server, '/__deepseek-web-import/probe', { url: 'https://chat.deepseek.com:443/api/v0/users/current' })
+  assert.equal(allowed.status, 200)
+  assert.equal(calls.specs.length, 1, 'the default port (explicit or implicit) is allowed')
+})
+
+test('a failed write names the session it created so the caller can clean up', async () => {
+  const { server } = harness({ persistence: { async create() { throw new Error('disk is full') } } })
+  const result = await post(server, '/__deepseek-web-import/importToSession', { sessionId: 'c1', workspaceId: 'ws-1' })
+  assert.equal(result.json.ok, false)
+  assert.equal(result.json.error, 'persist')
+  assert.match(result.json.sessionId, /^session-/)
+  assert.match(result.json.message, /disk is full/)
+})
+
+test('an unreadable session reports its id as well', async () => {
+  const { server } = harness({
+    persistence: {
+      async create() { return { async append() {}, async flush() {}, async close() {} } },
+      async readFrom() { throw new Error('unknown event type') },
+    },
+  })
+  const result = await post(server, '/__deepseek-web-import/importToSession', { sessionId: 'c1', workspaceId: 'ws-1' })
+  assert.equal(result.json.error, 'verify')
+  assert.match(result.json.sessionId, /^session-/)
+})
+
+// ---- route ownership: eviction is reversible, release is generation-checked ----
+
+/* Eviction is reversible: `claimRoute`'s restore hook exists so that a mount
+ * which fails after evicting a previous instance's route cannot leave the path
+ * served by nobody. The route that was evicted has to come back — with its own
+ * handler — while the half-mounted instance still releases what it claimed. */
+test('a mount that fails after evicting an earlier route puts that route back', () => {
+  const server = makeServer()
+  const path = '/__deepseek-web-import/tokenStatus'
+  const oldRoute = { kind: 'exact', path, handler() {}, owner: 'deepseek-web-import' }
+  server.exact.set(path, oldRoute)
+  /* the first route is claimed (duplicate refusal → eviction → reclaim) and the
+     second one fails, so the rollback runs while a route this attempt already
+     evicted is still missing from the table */
+  const original = server.register.bind(server)
+  const registered = []
+  server.register = (route) => {
+    registered.push(route === null || route === undefined ? null : route.path)
+    if (route === null || route === undefined) throw new TypeError('webserver: a route is required')
+    if (route.path === '/__deepseek-web-import/saveToken') throw new Error('mount exploded')
+    return original(route)
+  }
+  assert.throws(() => harness({ server }), /mount exploded/)
+
+  /* the eviction really happened: refusal first, then the reclaim */
+  assert.deepEqual(registered.slice(0, 2), [path, path])
+  assert.deepEqual(registered.at(-1), path, 'restore() re-registers the route it evicted')
+  assert.equal(server.exact.get(path), oldRoute, 'the evicted route is back, not lost')
+  assert.equal(server.exact.size, 1, 'the half-mounted instance released its own route')
+  assert.equal(typeof server.exact.get(path).handler, 'function', 'the restored path is still served')
+})
+
+test('disposing an instance twice is a harmless no-op', () => {
+  const server = makeServer()
+  const first = []
+  const second = []
+  harness({ server, effects: first })
+  harness({ server, effects: second })
+  const current = server.exact.get('/__deepseek-web-import/probe')
+  for (const dispose of first) dispose()
+  for (const dispose of first) dispose()
+  assert.equal(server.exact.size, 8, 'a stale disposer deletes nothing')
+  assert.equal(server.exact.get('/__deepseek-web-import/probe'), current)
+})
+
+test('evicting an untagged occupant is logged, a tagged one is not', () => {
+  const untaggedPath = '/__deepseek-web-import/probe'
+  const untaggedServer = makeServer()
+  untaggedServer.exact.set(untaggedPath, { kind: 'exact', path: untaggedPath, handler() {} })
+  const untagged = harness({ server: untaggedServer })
+  assert.ok(
+    untagged.logs.some((line) => line.includes('evicting untagged route ' + untaggedPath)),
+    untagged.logs.join('\n'),
+  )
+  assert.equal(untaggedServer.exact.size, 8)
+
+  /* our own previous instance is expected, so it is evicted silently */
+  const taggedServer = makeServer()
+  taggedServer.exact.set(untaggedPath, { kind: 'exact', path: untaggedPath, handler() {}, owner: 'deepseek-web-import' })
+  const tagged = harness({ server: taggedServer })
+  assert.ok(!tagged.logs.some((line) => line.includes('evicting untagged')), tagged.logs.join('\n'))
+  assert.equal(taggedServer.exact.size, 8)
 })
