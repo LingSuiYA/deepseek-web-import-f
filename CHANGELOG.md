@@ -11,6 +11,7 @@
   `workspace_registry_unavailable`/`subprocess_unavailable`/`token_empty` 等），由前端本地化；未知 code 仍显示后端原文。
 - 失败响应新增 `sessionId`：写入失败时也能知道创建了哪个会话（持久化接口没有删除，便于人工清理）。
 - `test/i18n.test.mjs` 与真实 `node:http` 的请求体/方法用例（413、400、405）；单测总数 95（`npm test` 现在自动跑全部 `test/*.test.mjs`，CI 同步）。
+- README 按 DSH 生态约定拆成**英文主文件** `README.md` + 中文 `README.zh.md`（两份都有语言切换行，均随插件包一起分发）。
 
 ### 修复
 
