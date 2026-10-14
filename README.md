@@ -76,11 +76,11 @@ DSH 每个版本写入一种会话格式（v0…v4），插件按运行中的版
 
 | DSH 版本 | Session 格式 | 状态 |
 |----------|--------------|------|
-| 0.1.1-rc.2 – 0.1.2-rc.1 | v0 | ✅ 真实后端实测 |
+| 0.1.0-rc.7 – 0.1.2-rc.1 | v0 | ✅ 真实后端实测 |
 | （未发布） | v1 | ✅ 按 v0 建模 + 运行时方言证据 |
 | 0.1.3-alpha.2 | v2 | ✅ 真实后端实测 |
-| 0.1.5-rc.2 – 0.1.6-alpha.2 | v3 | ✅ 真实后端实测 |
-| 0.1.7-rc.2+ | v4 | ✅ 真实后端实测 |
+| 0.1.5-alpha.1 – 0.1.6-alpha.2 | v3 | ✅ 真实后端实测 |
+| 0.1.7-alpha.1+（含桌面版 0.2.0-rc.2） | v4 | ✅ 真实后端实测 |
 
 验证方式与证据出处见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)；`npm test` 跑单测，`sh test/matrix.sh` 跑完整矩阵。
 
@@ -93,7 +93,8 @@ DSH 每个版本写入一种会话格式（v0…v4），插件按运行中的版
   - 对话历史：`GET /api/v0/chat/history_messages?chat_session_id=<uuid>`
 - **导入为会话**：把历史消息转换成合法 DSH 会话事件（`turn/start → user/message → step/start → assistant/message → step/end → turn/end`，surface 事件带 `surfaceOp: "append"`，含 `session/title` 与 `session/end-seed`），**只写持久化**（v0/v1 走 `create(meta)` + `append(id, events)`，v2+ 走 `create(header)` 返回的写句柄），再 `workspace.attachSession` 挂载到所选工作区 —— **不进入 live store**，因此可以被正常打开/对话。历史以「未回答的用户提问」结尾时保留未闭合的 turn，DSH 打开会话时会自行补 `interrupted` 收尾。
 - **正文与思维链**：DeepSeek 的正文在 `fragments`（`REQUEST`/`RESPONSE`/`THINK`），用户提问取 `REQUEST`，助手回答取 `RESPONSE` 作正文、`THINK` 作 `reasoning` 块；事件时间取消息的 `inserted_at`。
-- **网络层**：`web.fetch` 无法携带自定义 Header，插件通过 `subprocess` 起 Node 发送带 `Authorization: Bearer` 的请求；请求启用了 `rejectUnauthorized: false`（本机 TLS 证书校验失败的环境限制）。
+- **网络层**：`web.fetch` 无法携带自定义 Header，插件通过 `subprocess` 起 Node 发送带 `Authorization: Bearer` 的请求；请求 spec（含该 Header）走子进程 **stdin**，不出现在 `ps`/`/proc`。响应**先校验证书**，只有在证书类错误（被中间人/杀软 TLS 拦截的环境）时才重试一次不校验并标记 `insecureTls`（DSH 日志会记一行，诊断区可看到），不会静默降级。子进程对流式读到的响应同时设字符上限（约 2M 字符）与字节上限（6MB），超限即停止读取并报 `too_large`，不会把大响应整个缓冲进内存。
+- **界面语言**：设置页文案注册到宿主 locale 命名空间（`ctx.locale`），跟随 DSH/浏览器语言，未注册的语言（如德语）回落到英文；宿主没有 locale 服务时按浏览器语言自行判断。
 - **Token 存储**：使用 DSH `credentials` 服务（`$DSH_HOME/.credentials.yaml`），不写入会话/设置文档。
 
 ---
@@ -105,6 +106,8 @@ DSH 每个版本写入一种会话格式（v0…v4），插件按运行中的版
 - 对话目录一次最多拉取 **100 条**：实测 `fetch_page` 响应仅含 `chat_sessions` + `has_more`，无可用游标字段（`cursor`/`lte_cursor` 参数均不生效），超过 100 条时只返回最新 100 条。
 - `userToken` 有时效（约数小时~数天），失效后重新复制保存即可。
 - 插件通过 `dsh plugin add` 安装为 bundle 插件，安装后常驻（重启 DSH 不受影响）。
+- 联网检索步骤（`TOOL_SEARCH`/`TOOL_OPEN` fragment）与消息状态（如生成中被中断的 `INCOMPLETE`）不会保留：网页搜索在 DSH 里没有对应事件，导入时只取正文与思维链；被中断的回答只保留已有的正文/思维链内容。
+- 同一段 DeepSeek 对话重复导入会生成**两个** DSH 会话（插件不记录「DeepSeek 对话 id → DSH 会话 id」映射），DSH 的持久化接口也不提供删除，重复导入后需要自行在工作区里归档。
 
 ---
 

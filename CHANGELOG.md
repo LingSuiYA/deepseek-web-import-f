@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased
+## Unreleased（第二轮：i18n 与审阅修正）
+
+### 新增
+
+- **界面多语言**（issue #1）：设置页全部文案（标题、说明、状态、错误、按钮、诊断）改为词典表 `key → [zh, en]`，
+  注册进宿主 locale 命名空间（`ctx.locale`），跟随 DSH/浏览器语言；未注册的语言回落到英文；宿主没有 locale
+  服务时按浏览器语言自行判断。切换语言时重新注册设置页，标签与内容即时更新。
+- 失败响应统一携带**稳定错误码**（`save_failed`/`probe_refused`/`credentials_unavailable`/`persistence_unavailable`/
+  `workspace_registry_unavailable`/`subprocess_unavailable`/`token_empty` 等），由前端本地化；未知 code 仍显示后端原文。
+- 失败响应新增 `sessionId`：写入失败时也能知道创建了哪个会话（持久化接口没有删除，便于人工清理）。
+- `test/i18n.test.mjs` 与真实 `node:http` 的请求体/方法用例（413、400、405）；单测总数 95（`npm test` 现在自动跑全部 `test/*.test.mjs`，CI 同步）。
+
+### 修复
+
+- **413 现在真的能送达**：请求体超限时原先 `req.destroy()` 会连带销毁 socket，浏览器看到的是连接重置而非 413；
+  改为排空请求体后回 413（`Connection: close`）。原来的测试把 `req.destroy()` 伪造成空函数，因此测不出真实行为。
+- **路由处理器返回 promise**：`handlerFor` 之前返回 `undefined`，路由内的 rejection 无法进入 DSH 的错误日志与 400 兜底，
+  而是变成 unhandled rejection；同时给 req/res 挂 `error` 监听（调用方中途断开不再升级为未处理异常）。
+- **凭据服务的报错在写入日志前抹掉 token**：该报错可能内嵌被拒绝的值，而 README 恰恰鼓励贴日志报障。
+- **probe 收紧到默认端口**：`https://chat.deepseek.com:8443/…` 之前会放行，现在只接受默认端口（或省略端口）。
+- **目录接口检查截断**：响应被截断时返回 `too_large`，不再表现为「响应非 JSON（可能 Token 无效）」。
+- **标题兜底恢复**：目录侧不再把无标题会话写成 `(无标题)`（前端另有本地化显示），否则会挤掉 `dsh-session-title` 的兜底标题。
+- **版本首猜取已存会话的最大版本**：`list()` 不保证顺序，而同一 profile 可能同时存在多代会话（v0 与 v4 混存是真实情况），
+  按列表第一条猜会猜错并白白浪费一次拒绝重试。
+- **拒绝文案多模式匹配**：除 `requires Session format vN` 外，同时匹配 `header version must be N`、`reads only vN`、
+  `format version must be N`（大小写不敏感），避免换一个构建就退化成硬失败。
+- **只有思维链的回答也补正文块**：判断条件从「有没有块」改为「有没有 text 块」——思考中被中断的回答此前会渲染成空回合。
+- **传输层流式限流**：字符上限只是事后切片，子进程仍会整体缓冲响应；现在同时设字节上限（6MB），超限即停止读取并报 `too_large`。
+- **TLS 先校验、只在证书错误时降级**：原先对每个携带 userToken 的请求都无条件 `rejectUnauthorized: false`；
+  现在先正常校验，仅在证书类错误时重试一次并标记 `insecureTls`（日志留痕），不再是静默的全量降级。
+- **路由归属改为代际记账**：释放权判定不再依赖 `webServer.exact` 这一内部字段（未来改名也不会 fail-open 误删新实例路由）；
+  驱逐旧实例路由时留日志；挂载中途失败时把已驱逐的旧路由**恢复**（此前会留下无人服务的路径且无任何报错）。
+- 文档数字修正（单测数量、"21 events"、v0/v3/v4 版本区间），并补「已知限制」：检索步骤与消息状态不保留、重复导入会生成两个会话。
+
+## Unreleased（首轮：Session 格式 v0–v4）
 
 修复导入链路，并按运行中的 DSH 版本自适应写入 Session 格式 v0–v4。
 

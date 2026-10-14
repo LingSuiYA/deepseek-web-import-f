@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  EMPTY_ANSWER_NOTE,
   EMPTY_PROMPT_NOTE,
   MAX_TITLE_BYTES,
   buildSessionEvents,
@@ -222,6 +223,50 @@ test('an attachment-only prompt keeps an explicit note instead of empty text', (
   const events = buildSessionEvents([{ role: 'USER', inserted_at: 1700000000, fragments: [] }], 'title', formatProfile(4))
   const user = events.find((event) => event.type === 'user/message')
   assert.equal(user.data.content[0].text, EMPTY_PROMPT_NOTE)
+})
+
+test('an answer that stopped while still thinking keeps a text block', () => {
+  // reasoning without text is not the empty case people expect: the block list
+  // is non-empty, so the turn would render with no answer at all
+  const blocks = messageBlocks(
+    { role: 'ASSISTANT', status: 'INCOMPLETE', fragments: [{ type: 'THINK', content: 'still working on it' }] },
+    'assistant',
+  )
+  assert.deepEqual(blocks.map((block) => block.type), ['reasoning', 'text'])
+  assert.equal(blocks[0].text, 'still working on it')
+  assert.equal(blocks[1].text, EMPTY_ANSWER_NOTE)
+})
+
+test('an answer that never arrived keeps its own note', () => {
+  // fixture[5] is the INCOMPLETE reply whose fragments are empty
+  assert.equal(fixture[5].status, 'INCOMPLETE')
+  assert.deepEqual(fixture[5].fragments, [])
+  assert.deepEqual(messageBlocks(fixture[5], 'assistant'), [{ type: 'text', text: EMPTY_ANSWER_NOTE }])
+})
+
+test('every assistant turn carries a text block, whatever the fragments were', () => {
+  const cases = [
+    fixture[1],
+    fixture[5],
+    { fragments: [{ type: 'THINK', content: 'only thinking' }] },
+    { fragments: [{ type: 'TOOL_SEARCH', content: 'search only' }] },
+    { fragments: [] },
+    {},
+  ]
+  for (const message of cases) {
+    const blocks = messageBlocks(message, 'assistant')
+    assert.ok(blocks.some((block) => block.type === 'text'), JSON.stringify(message))
+  }
+  const events = buildSessionEvents([
+    { role: 'USER', inserted_at: 1700000000, fragments: [{ type: 'REQUEST', content: 'q' }] },
+    { role: 'ASSISTANT', inserted_at: 1700000001, status: 'INCOMPLETE', fragments: [{ type: 'THINK', content: 'thinking' }] },
+    { role: 'ASSISTANT', inserted_at: 1700000002, status: 'INCOMPLETE', fragments: [] },
+  ], 'title', formatProfile(4))
+  const assistants = events.filter((event) => event.type === 'assistant/message')
+  assert.equal(assistants.length, 2)
+  for (const event of assistants) {
+    assert.ok(event.data.message.content.some((block) => block.type === 'text'), 'an imported turn is never text-less')
+  }
 })
 
 test('the stored header dialect overrides the modeled row', () => {
