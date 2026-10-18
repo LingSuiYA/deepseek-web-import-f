@@ -26,7 +26,7 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 ---
 
-## B. 市场基线 + 补丁层（当前方式）
+## B. 市场基线 + 补丁层
 
 ### 1. 装上游基线（与市场同源）
 
@@ -63,7 +63,7 @@ DSH_PLUGIN_DIR=/path/to/pkg node tools/apply-dlc.mjs
 | stage | 内容 |
 |---|---|
 | 1 | 图片导入 |
-| 2 | 文档附件（流式、无 20MB 限制） |
+| 2 | 文档附件（流式下载） |
 | 3 | Markdown 清洗（`[reference:N]`、`<br>`） |
 | 4 | 导入后自动刷新（可关） |
 | 5 | 批量导入 + 客户端预热 |
