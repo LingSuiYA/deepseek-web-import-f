@@ -22,6 +22,9 @@ This page documents only the overlay.
   `<br>` tags are removed, while fenced code blocks are left untouched.
 - The result line reports how many were kept (`N images`, `N files`), or `0/N` when
   items were found but none could be stored.
+- After a successful import the page refreshes once so the new session appears in
+  the sidebar without a manual reload; the checkbox next to "Load conversations"
+  turns this off for batch imports.
 - An attachment that fails to download or decode is skipped; the text import still succeeds.
 
 ## How it works

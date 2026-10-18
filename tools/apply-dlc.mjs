@@ -303,5 +303,60 @@ import { cleanDeepSeekMarkdown } from './text.js'`)
   console.log('stage 3 applied: markdown cleanup (citation markers, stray <br>)')
 }
 
+/* ---------------------------------------------------------------- stage 4 */
+if (!read(clientPath).includes('autoRefresh')) {
+  replaceOnce(clientPath,
+    `      '.dswi select{padding:6px;border-radius:6px;border:1px solid #ccc;max-width:200px}',`,
+    `      '.dswi select{padding:6px;border-radius:6px;border:1px solid #ccc;max-width:200px}',
+      '.dswi-check{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;color:var(--color-text-secondary,#666);cursor:pointer}',`)
+
+  replaceOnce(clientPath,
+    `      importedFilesMissing: ['，附件 0/{count} 个（详见 DSH 日志）', ', 0/{count} files (see the DSH log)'],`,
+    `      importedFilesMissing: ['，附件 0/{count} 个（详见 DSH 日志）', ', 0/{count} files (see the DSH log)'],
+      autoRefresh: ['导入后自动刷新页面（侧边栏立即出现）', 'Refresh the page after import (the new session appears immediately)'],`)
+
+  replaceOnce(clientPath,
+`      const [probeOut, setProbeOut] = React.useState('');`,
+`      const [probeOut, setProbeOut] = React.useState('');
+      /* The sidebar is fed by a live stream; a session written and attached by
+         the import route is not guaranteed to arrive on it before the next
+         refresh. Reload once by default so the new session shows up, and let the
+         operator turn that off when importing several conversations in a row. */
+      const [autoRefresh, setAutoRefresh] = React.useState(function () {
+        try { return window.localStorage.getItem('dswi.autoRefresh') !== '0'; } catch (e) { return true; }
+      });
+      function toggleAutoRefresh(next) {
+        setAutoRefresh(next);
+        try { window.localStorage.setItem('dswi.autoRefresh', next ? '1' : '0'); } catch (e) { /* private mode */ }
+      }`)
+
+  replaceOnce(clientPath,
+`        const r = await call('importToSession', { sessionId: s.id, title: s.title, workspaceId: wid });
+        setResults(function (p) { const n = {}; for (const k in p) n[k] = p[k]; n[s.id] = r; return n; });`,
+`        const r = await call('importToSession', { sessionId: s.id, title: s.title, workspaceId: wid });
+        setResults(function (p) { const n = {}; for (const k in p) n[k] = p[k]; n[s.id] = r; return n; });
+        /* Give the result line a beat to render, then reload so the sidebar
+           stream re-subscribes and shows the imported session. */
+        if (r && r.ok === true && autoRefresh && r.attached !== false) {
+          window.setTimeout(function () { window.location.reload(); }, 1200);
+        }`)
+
+  replaceOnce(clientPath,
+`          React.createElement('button', { onClick: list, disabled: loading }, loading ? t('loadingList') : t('loadList')),
+          error ? React.createElement('p', { className: 'dswi-err' }, error) : null,`,
+`          React.createElement('button', { onClick: list, disabled: loading }, loading ? t('loadingList') : t('loadList')),
+          React.createElement('label', { className: 'dswi-check' },
+            React.createElement('input', {
+              type: 'checkbox',
+              checked: autoRefresh,
+              onChange: function (e) { toggleAutoRefresh(e.target.checked); },
+            }),
+            t('autoRefresh')
+          ),
+          error ? React.createElement('p', { className: 'dswi-err' }, error) : null,`)
+
+  console.log('stage 4 applied: optional refresh-after-import')
+}
+
 console.log('overlay is up to date')
 console.log('restart DSH (or toggle the plugin) to load the patched host half.')
