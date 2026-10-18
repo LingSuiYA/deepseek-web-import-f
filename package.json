@@ -1,7 +1,7 @@
 {
   "name": "deepseek-web-import",
   "version": "0.2.0-dlc.6",
-  "description": "Import chat.deepseek.com conversations into DeepSeek Harness as resumable sessions. DLC overlay on upstream 0.2.0: additionally imports the images and documents users uploaded.",
+  "description": "Import chat.deepseek.com conversations into DeepSeek Harness as resumable sessions. Feature supplement for upstream 0.2.0: imports images and documents, cleans the markdown, and refreshes the session list.",
   "type": "module",
   "repository": {
     "type": "git",

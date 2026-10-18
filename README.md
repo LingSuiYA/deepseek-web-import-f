@@ -1,130 +1,154 @@
-# deepseek-web-import — DLC overlay
+<div align="center">
 
-[中文](README.zh.md)
+# deepseek-web-import · feature supplement
 
-This repository is a thin overlay on **[wpc0323/deepseek-web-import](https://github.com/wpc0323/deepseek-web-import)**.
-It tracks upstream `0.2.0` and adds one capability: **importing the pictures users
-uploaded to a DeepSeek conversation**.
+**Bring DeepSeek web conversations into DSH together with their images and documents**
 
-Conversation listing, token storage, session-format compatibility, the localized
-settings page and diagnostics all come from upstream — read the
-[upstream README](https://github.com/wpc0323/deepseek-web-import#readme) for those.
-This page documents only the overlay.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Based on](https://img.shields.io/badge/based%20on-wpc0323%2Fdeepseek--web--import%200.2.0-blue)
+![Plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4B6BFB)
 
-## Added by this overlay
+[Upstream](https://github.com/wpc0323/deepseek-web-import) · [Install from zero](docs/INSTALL-FROM-ZERO.md) · [Issues](https://github.com/LingSuiYA/deepseek-web-import-f/issues)
 
-- An imported human turn keeps its pictures: each image is downloaded, stored as a
-  DSH attachment, and rendered inline after the prompt text.
-- It also keeps **documents** (PDF, Word, text, …) as file attachments, with their
-  original names and bytes.
-- Text is normalized for a plain Markdown viewer: DeepSeek's `[reference:N]`
-  citation markers (their targets are not in the history payload) and stray
-  `<br>` tags are removed, while fenced code blocks are left untouched.
-- The result line reports how many were kept (`N images`, `N files`), or `0/N` when
-  items were found but none could be stored.
-- After a successful import the page refreshes once so the new session appears in
-  the sidebar without a manual reload. Batch mode defers that to one
-  "Finish and refresh" button when importing several conversations.
-- The stored title is written into the projection cache at import time, so the
-  sidebar shows the real conversation name immediately instead of "untitled"
-  until the session is opened once.
-- An attachment that fails to download or decode is skipped; the text import still succeeds.
+</div>
+
+---
+
+## Before anything else
+
+This repository is a **feature supplement and modification** of
+[wpc0323/deepseek-web-import](https://github.com/wpc0323/deepseek-web-import), not an
+original project. Conversation listing, token storage, session-format compatibility,
+the settings page and the diagnostics all come from upstream and remain the original
+author's work.
+
+The only thing added here is what an import used to drop: pictures, documents, and
+the text cleanup, result feedback and refresh behavior that go with them.
+
+- Same package name and same Cordis row as upstream, so installing one replaces the other.
+- An upstream release restores the files this supplement touches; re-apply the overlay
+  afterwards (see [Install and update](#install-and-update)).
+- For text-only imports, upstream on its own is enough.
+
+## Why this supplement exists
+
+A stock import keeps text only. Pictures and PDFs attached to the conversation vanish,
+search citations stay in the body as literal `[reference:N]` markers, the new session
+only shows up after a manual refresh, and its title stays "untitled" until the session
+is opened once.
+
+None of that breaks importing. All of it decides whether the imported conversation is
+actually usable.
+
+## Features
+
+### 1. Images and documents
+
+- **Images**: read the file id from the human turn's `FILE` fragment, refresh the signed
+  path through `fetch_files`, download the `ty=p` preview, sniff the real raster type
+  from magic bytes, and store it through the DSH attachment service.
+- **Documents**: fetch PDF / Word / text as the original bytes (`ty=r`) and **stream**
+  them to a temporary file before `saveFileStream`. No 20 MB style limit: the ceiling
+  follows the web client (100 MB per file, 50 files by default), with a 1 GiB runaway
+  guard as the only bound.
+- **Failure isolation**: one failed picture or document is skipped; the text and the
+  session are still written.
+- **Text cleanup**: `[reference:N]` citation markers and stray `<br>` tags are removed;
+  fenced code blocks are left untouched.
+
+### 2. Result report
+
+A finished import reports the session id, message count, event count, session format
+version, and `N images` / `N files`.
+
+When items were found but none could be stored the line says `0/N`, which distinguishes
+"there were none" from "there were some and they failed".
+
+### 3. Automatic refresh
+
+1.2 seconds after a successful import the page reloads once, so the new session appears
+in the sidebar without a manual F5.
+
+For several imports in a row, the batch mode counts them instead and exposes a single
+"Finish and refresh (N)" action. Both preferences live in `localStorage`.
+
+### 4. Error handling
+
+- Error codes follow upstream (`no_token`, `api`, `too_large`, `persist`, …); new
+  failures are scoped to the attachment that hit them.
+- Any image or document failure still lets the session be written.
+- The result carries `titleCached` (`written` / `ok` / `error` / `no_cache`) so the
+  title-cache outcome is visible.
+- If startup reports `deepseek-web-import: import failed`, use the boot dialog's
+  "disable third-party plugins" to get DSH running, then roll back only the client file
+  (command in [Install from zero](docs/INSTALL-FROM-ZERO.md)).
 
 ## How it works
 
-DeepSeek keeps an upload as a `FILE` fragment on the human turn:
+Upstream translates `history_messages` fragments into DSH session events. This
+supplement adds two attachment passes and one text pass before the session is written:
 
-```json
-{ "type": "FILE", "files": [{ "id": "file-…", "file_name": "image.png",
-  "is_image": true, "width": 2559, "height": 1440,
-  "status": "SUCCESS", "signed_path": "/file?file_id=…&state=…" }] }
+```text
+DeepSeek history
+   │  fragments: REQUEST / RESPONSE / THINK / FILE
+   ├─ image ── fetch_files ── ty=p ── magic-byte check ── attachments.saveImages
+   ├─ file  ── fetch_files ── ty=r ── streamed temp file ── attachments.saveFileStream
+   └─ text  ── strip [reference:N] / <br> ── written as a text block
+                                   │
+                             buildSessionEvents
 ```
-
-The bytes are not in `history_messages`; they sit behind a signed CDN path. Three
-steps run before the session is written:
-
-1. `GET /api/v0/file/fetch_files?file_ids=…` refreshes the descriptors — the
-   `signed_path` carried by history can be stale;
-2. download from `https://files.deepseeksvc.com/api<path>` through the same
-   `subprocess` transport as every other request; the rendition depends on the
-   entry:
-   - images use `?ty=p` (`&fmt=jpeg` transcodes, omitting it may yield WebP);
-   - documents use `?ty=r`, the original bytes;
-3. persist through the DSH `attachments` service and reference the result as
-   `{ "type": "image" | "file", "attachment": … }` after the prompt text.
-
-**No artificial size cap.** The web client allows **100 MB per file** by default
-(`0x6400000`) and up to 50 files, and a model can raise that through its
-`file_feature.max_upload_file_size`; a smaller importer limit would drop files the
-user could upload in the browser. The only bound here is a 1 GiB runaway guard.
-Documents stream to a temporary file and then into `attachments.saveFileStream`
-(no base64, no whole-file buffer), so a file at the web limit costs disk I/O
-rather than heap.
 
 | Piece | Role |
 |---|---|
-| `lib/images.js` | image discovery, download, sniffing (new file) |
-| `lib/files.js` | document discovery, streamed download, save (new file) |
-| `lib/text.js` | markdown cleanup, code fences preserved (new file) |
-| `lib/events.js` | `messageBlocks(message, role, images, files)` and `buildSessionEvents(…, imagesByMessage, filesByMessage)` |
-| `lib/index.js` | runs both passes before writing, reports the counts |
-| `lib/client.js` | localized image/file counts in the result line |
-| `test/images.test.mjs`, `test/files.test.mjs`, `test/text.test.mjs` | 22 cases: parsing, URLs, event assembly, download/save pipeline, size guard, cleanup |
+| `lib/images.js` | image discovery, download, sniffing (new) |
+| `lib/files.js` | document discovery, streamed download, save (new) |
+| `lib/text.js` | markdown cleanup, code fences preserved (new) |
+| `lib/events.js` | `messageBlocks(message, role, images, files)`, `buildSessionEvents(…, imagesByMessage, filesByMessage)` |
+| `lib/index.js` | attachment passes before writing, counts and `titleCached` |
+| `lib/client.js` | result line, automatic refresh, batch mode |
+| `test/*.test.mjs` | offline cases: parsing, URLs, event assembly, download/save pipeline, cleanup |
 
 ## Install and update
 
-> Starting from a client that has neither the upstream plugin nor this overlay?
-> See [docs/INSTALL-FROM-ZERO.md](docs/INSTALL-FROM-ZERO.md) for the three routes
-> (public single-step, market base + overlay, offline tarball), the acceptance
-> checklist, and the failure table.
-
-The marketplace only updates sources it can re-resolve (`npm:`, `github:`, or a
-fixed archive URL); a `file:` tarball is invisible to it. Keep the base
-market-managed and re-apply the overlay:
+Starting from a client that has neither upstream nor this supplement? Pick one route in
+[Install from zero](docs/INSTALL-FROM-ZERO.md). The routes differ in exactly one respect:
+whether the plugin marketplace can keep the package updated.
 
 ```sh
-# base: the same archive URL the marketplace uses
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
-
-# overlay
-node tools/apply-dlc.mjs
-```
-
-**After every marketplace update of the base, run `node tools/apply-dlc.mjs`
-again** — the update restores pristine upstream files and removes the overlay.
-The script is idempotent, writes through a fresh inode (never editing pnpm's store
-link), and fails loudly when an anchor moved, which means the overlay needs a rebase.
-
-Once this repository is public, the single-step install is:
-
-```sh
+# A. once this repository is public: one step, marketplace tracks the repository
 dsh plugin add LingSuiYA/deepseek-web-import-f
+
+# B. today: marketplace-managed base + local overlay
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
+git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
+node deepseek-web-import-f/tools/apply-dlc.mjs
+
+# C. offline: a local tarball (no marketplace updates)
+npm pack && dsh plugin add file:/absolute/path/deepseek-web-import-*.tgz
 ```
 
-It replaces the base, because both packages carry the same name and Cordis row.
+A marketplace update restores the upstream files, so the overlay disappears; run
+`node tools/apply-dlc.mjs` again. The script applies each stage only when missing and
+fails loudly when an anchor moved, instead of leaving a half-patched package.
 
-## Staying in sync
+> Host-half changes need a DSH restart or one plugin toggle; client-only changes (refresh,
+> batch mode) take effect on a page refresh.
 
-```sh
-git fetch upstream
-git rebase upstream/main     # replay the overlay commits
-npm test
-```
-
-Bump the suffix after a rebase (`0.2.0-dlc.1` → `0.2.1-dlc.1`). Overlay commits
-stay small and self-contained so a rebase is a replay, not a merge.
-
-## Compatibility
+## Compatibility and limits
 
 - Base: upstream `0.2.0`, writing DSH session format v4.
-- `lib/images.js` and `lib/files.js` are additive; the three patched files are
-  anchor-checked.
 - Document bytes are restored, but the model context still carries only the text
-  DeepSeek stored for that turn — the parsed document text was never part of the
-  history payload.
-- Replaying an imported turn that carries a file depends on the target model
-  adapter accepting `file` blocks; verify once with a document conversation.
+  DeepSeek stored for that turn — the parsed document text was never in the history payload.
+- Replaying an imported turn with a `file` block depends on the target model adapter
+  accepting it; verify once with a document conversation.
+- Built on DeepSeek's unofficial API; an expired `userToken` has to be saved again.
+
+## Credits
+
+- [wpc0323](https://github.com/wpc0323) wrote the import implementation and the
+  format-compatibility layer this repository builds on.
+- The settings page and error conventions follow upstream; this supplement only adds to them.
 
 ## License
 
-MIT, inherited from upstream.
+[MIT](LICENSE), inherited from upstream.

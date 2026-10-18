@@ -1,108 +1,120 @@
-# deepseek-web-import · DLC 补丁层
+<div align="center">
 
-[English](README.md)
+# deepseek-web-import · 功能补充版
 
-本仓库是 **[wpc0323/deepseek-web-import](https://github.com/wpc0323/deepseek-web-import) 的薄补丁层**：
-跟随上游 `0.2.0`，只增加一项能力——**导入对话里用户上传的图片**。
+**把 DeepSeek 网页端的历史对话，连同图片和附件一起带进 DSH**
 
-对话目录、token 存储、会话格式兼容、设置页双语与诊断都来自上游，请直接看
-[上游 README](https://github.com/wpc0323/deepseek-web-import/blob/main/README.zh.md)。
-本页只说明补丁层。
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Based on](https://img.shields.io/badge/based%20on-wpc0323%2Fdeepseek--web--import%200.2.0-blue)
+![Plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4B6BFB)
 
-## 本层新增
+[上游仓库](https://github.com/wpc0323/deepseek-web-import) · [从零安装](docs/INSTALL-FROM-ZERO.md) · [问题反馈](https://github.com/LingSuiYA/deepseek-web-import-f/issues)
 
-- 导入后的人话轮保留图片：下载 → 存为 DSH 附件 → 在提问文本之后内联显示。
-- 同时保留**文档附件**（PDF / Word / 文本等），原名原字节。
-- 文本按普通 Markdown 查看器做规范化：DeepSeek 的 `[reference:N]` 引用标记（目标不在历史负载里）
-  和零散的 `<br>` 会被清除，围栏代码块内保持原样。
-- 结果行报告保留数量（`含图片 N 张`、`含附件 N 个`）；找到但一个都没存下时显示 `0/N`。
-- 导入成功后自动刷新一次页面，新会话直接出现在侧边栏，无需手动 F5；
-  批量模式会把刷新推迟到最后的「完成导入并刷新」按钮，连续导入不被打断。
-- 导入时即把标题写进投影缓存，侧边栏立刻显示真实标题，而不是「未命名」直到点开一次。
-- 单个附件下载或解码失败只跳过它，文本导入照常完成。
+</div>
+
+---
+
+## 写在前面
+
+本项目是 [wpc0323/deepseek-web-import](https://github.com/wpc0323/deepseek-web-import) 的**功能补充与修改**，不是原创项目。对话目录、Token 存储、会话格式兼容、设置页与诊断能力都来自上游，版权归原作者所有。
+
+我们只补齐「导入时会丢失的东西」：图片、文档附件，以及随之而来的正文清洗、结果反馈和刷新体验。
+
+- 与上游**同名、同 Cordis row**，安装本包会替换上游包，二选一。
+- 上游发布新版本后，被修改过的文件会被还原，需要重新贴一次补丁（见「安装与更新」）。
+- 只想用纯文本导入的话，直接用上游即可。
+
+## 为什么需要这个补充
+
+从网页端导入对话时，原始版本只保留文字：对话里的图片和 PDF 会消失；搜索回答末尾的 `[reference:N]` 会以字面量留在正文里；导入完成还要手动刷新才能看到新会话，侧边栏标题也要点开一次才显示。
+
+这些都不影响「能不能导入」，但决定了「导进来能不能用」。
+
+## 核心特性
+
+### 1. 图片与附件
+
+- **图片**：从用户消息的 `FILE` fragment 取文件 ID，经 `fetch_files` 刷新签名路径，用 `ty=p` 下载预览图；按魔数识别真实格式后交给 DSH 附件服务，会话里直接显示。
+- **文档**：PDF / Word / 文本等按 `ty=r` 取原件，**流式落盘**（先写临时文件，再交给 `saveFileStream`），不再受 20 MB 之类的人为限制；上限跟随网页端（默认单文件 100 MB、最多 50 个），只保留 1 GiB 的失控保护。
+- **失败隔离**：单张图片或单个文档失败只跳过它，文本与会话照常写入。
+- **正文清洗**：去掉 `[reference:N]` 引用标记和孤立的 `<br>`，围栏代码块内的内容保持原样。
+
+### 2. 结果报告
+
+导入完成后直接给出：会话 ID、消息数、事件数、会话格式版本，以及 `含图片 N 张` / `含附件 N 个`。
+
+找到但一个都没存下时显示 `0/N`，能立刻区分「本来就没有」和「有但失败了」。
+
+### 3. 自动刷新
+
+导入成功后 1.2 秒自动刷新页面，新会话直接出现在侧边栏，不必手动按 F5。
+
+连续导入多条时，勾选「批量导入」改为累计计数，最后点一次「完成导入并刷新（N 条）」，中途不打断。两个偏好都记在 `localStorage`。
+
+### 4. 报错处理
+
+- 错误码沿用上游约定（`no_token`、`api`、`too_large`、`persist` 等），新增失败只影响对应附件。
+- 图片或文档任一环节出错，都会继续写会话，不会整体失败。
+- 导入结果附带 `titleCached` 字段（`written` / `ok` / `error` / `no_cache`），用于判断标题缓存是否写入。
+- 启动期若出现 `deepseek-web-import: import failed`，可先用启动对话框的「禁用第三方插件」拉起 DSH，再只回滚客户端文件（命令见[从零安装](docs/INSTALL-FROM-ZERO.md)）。
 
 ## 实现
 
-DeepSeek 把上传物挂在用户消息的 `FILE` fragment 上：
+上游把 `history_messages` 的 `fragments` 翻译成 DSH 会话事件；本补充在写会话之前，多做两步附件处理和一步正文清洗：
 
-```json
-{ "type": "FILE", "files": [{ "id": "file-…", "file_name": "image.png",
-  "is_image": true, "width": 2559, "height": 1440,
-  "status": "SUCCESS", "signed_path": "/file?file_id=…&state=…" }] }
+```text
+DeepSeek 历史
+   │  fragments: REQUEST / RESPONSE / THINK / FILE
+   ├─ 图片  ── fetch_files ── ty=p ── 魔数校验 ── attachments.saveImages
+   ├─ 文档  ── fetch_files ── ty=r ── 流式临时文件 ── attachments.saveFileStream
+   └─ 正文  ── 去 [reference:N] / <br> ── 写入 text 块
+                                   │
+                             buildSessionEvents
 ```
-
-字节不在 `history_messages` 里，而在带签名的 CDN 路径后面。写会话前多做三步：
-
-1. `GET /api/v0/file/fetch_files?file_ids=…` 刷新描述（历史里的 `signed_path` 可能过期）；
-2. 从 `https://files.deepseeksvc.com/api<path>` 下载，走与其他请求相同的
-   `subprocess` 通道，按条目类型选版本：图片 `?ty=p`（`&fmt=jpeg` 转码，省略可能是 WebP）；
-   文档 `?ty=r`（原件）；
-3. 交给 DSH `attachments` 服务落盘，并在提问文本之后写入
-   `{ "type": "image" | "file", "attachment": … }`。
-
-**不设人为大小上限。** 网页端默认允许**单个 100 MB**（`0x6400000`）、最多 50 个，
-且模型可通过 `file_feature.max_upload_file_size` 放宽；如果这里卡一个更小的值，
-就会丢掉用户在浏览器里明明能上传的文件。这里唯一的边界是 1 GiB 的失控保护。
-文档采用**流式**处理：子进程直接写入临时文件，宿主再交给
-`attachments.saveFileStream`，不走 base64、不整文件进内存，所以 100 MB 的文件
-消耗的是磁盘 I/O 而不是几倍堆内存。
 
 | 文件 | 作用 |
 |---|---|
-| `lib/images.js` | 图片发现、下载、嗅探（新增文件） |
-| `lib/files.js` | 文档发现、流式下载、保存（新增文件） |
-| `lib/text.js` | Markdown 清洗，代码块保持原样（新增文件） |
+| `lib/images.js` | 图片发现、下载、格式嗅探（新增） |
+| `lib/files.js` | 文档发现、流式下载、保存（新增） |
+| `lib/text.js` | 正文 Markdown 清洗，代码块保持原样（新增） |
 | `lib/events.js` | `messageBlocks(message, role, images, files)`、`buildSessionEvents(…, imagesByMessage, filesByMessage)` |
-| `lib/index.js` | 写会话前跑两趟流程，返回 `imageFiles`/`imageCount`、`fileFiles`/`fileCount` |
-| `lib/client.js` | 结果行显示图片/附件数量（中英双语） |
-| `test/images.test.mjs`、`test/files.test.mjs`、`test/text.test.mjs` | 共 22 项：解析、URL、事件拼装、下载/保存流水线、大小保护、清洗 |
+| `lib/index.js` | 写会话前执行附件流程，返回计数与 `titleCached` |
+| `lib/client.js` | 结果展示、自动刷新、批量模式 |
+| `test/*.test.mjs` | 离线用例：解析、URL、事件拼装、下载/保存流水线、清洗 |
 
 ## 安装与更新
 
-> 目标客户端**既没有上游插件、也没有本补丁层**？看
-> [docs/INSTALL-FROM-ZERO.md](docs/INSTALL-FROM-ZERO.md)：三条路线（公开后一步安装 /
-> 市场基线 + 补丁 / 离线 tgz）、验收清单和故障表都在里面。
-
-插件市场只会更新它能重新解析的来源（`npm:`、`github:`、固定归档 URL）；用 `file:`
-装的本地 tgz 市场看不见。所以让市场托管基线，再把补丁层贴上去：
+目标客户端既没有上游插件、也没有本补充？按[从零安装](docs/INSTALL-FROM-ZERO.md)选一条路线即可。三条路线的区别只有一点：**能不能享受插件市场的自动更新**。
 
 ```sh
-# 基线：与市场同源的归档 URL
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
-
-# 补丁层
-node tools/apply-dlc.mjs
-```
-
-**市场每次更新基线后，重新执行一次 `node tools/apply-dlc.mjs`。** 更新会还原上游原始文件，
-补丁层随之消失。脚本可重复执行、写入换新 inode（不会破坏 pnpm 的 store 硬链接），
-锚点对不上会直接报错——那表示补丁层需要 rebase。
-
-仓库公开后可以一步安装（同名同 Cordis row，会替换基线）：
-
-```sh
+# A. 仓库公开后：一步安装（市场可跟踪仓库更新）
 dsh plugin add LingSuiYA/deepseek-web-import-f
+
+# B. 当前方式：市场托管基线 + 本地补丁层
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
+git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
+node deepseek-web-import-f/tools/apply-dlc.mjs
+
+# C. 离线：本地 tgz（放弃市场更新）
+npm pack && dsh plugin add file:/absolute/path/deepseek-web-import-*.tgz
 ```
 
-## 跟随上游
+市场更新会还原上游文件，补丁层随之消失；重新执行一次 `node tools/apply-dlc.mjs` 即可恢复，脚本会按阶段跳过已应用的部分，锚点对不上时会直接报错而不是留下半成品。
 
-```sh
-git fetch upstream
-git rebase upstream/main     # 重放补丁提交
-npm test
-```
+> 宿主半部的改动需要重启 DSH 或 toggle 一次插件；纯客户端改动（刷新、批量）刷新页面即可。
 
-rebase 后把版本后缀加一（`0.2.0-dlc.1` → `0.2.1-dlc.1`）。补丁提交保持小而独立，
-rebase 才是「重放」而不是「合并」。
+## 兼容性与限制
 
-## 兼容性
+- 基线：上游 `0.2.0`，写入 DSH 会话格式 v4。
+- 文档字节被完整保留，但模型上下文里仍只有 DeepSeek 当时存下的文本——解析后的文档正文本来就不在历史负载里。
+- 带 `file` 块的历史在续聊时需要模型适配器接受该块，建议用一条文档对话验证一次。
+- 依赖 DeepSeek 非官方接口，`userToken` 过期后需要重新保存。
 
-- 基线：上游 `0.2.0`，写 DSH 会话格式 v4。
-- `lib/images.js`、`lib/files.js` 是纯新增；被改的三个文件由 `apply-dlc` 做锚点校验。
-- 文档字节被完整恢复，但模型上下文里仍只有 DeepSeek 当时存下的文本——解析后的文档正文
-  本来就不在历史负载里。
-- 带 `file` 块的历史在续聊时需要目标模型适配器接受该块，建议用一条文档对话验证一次。
+## 致谢
 
-## 许可证
+- 上游作者 [wpc0323](https://github.com/wpc0323) 提供了完整的导入实现与格式兼容层。
+- 设置页与错误处理沿用了上游的约定，本补充只在其上做增量。
 
-MIT，继承自上游。
+## License
+
+[MIT](LICENSE)，继承自上游。
