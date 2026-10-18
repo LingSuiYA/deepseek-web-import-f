@@ -47,7 +47,7 @@
 
 ### 3. 自动刷新
 
-导入成功后 1.2 秒自动刷新页面，新会话直接出现在侧边栏，不必手动按 F5。
+导入成功后 1.2 秒自动刷新页面，新会话直接出现在侧边栏，不需要手动刷新。
 
 连续导入多条时，勾选「批量导入」改为累计计数，最后点一次「完成导入并刷新（N 条）」，中途不打断。两个偏好都记在 `localStorage`。
 
@@ -86,16 +86,29 @@ DeepSeek 历史
 
 目标客户端既没有上游插件、也没有本补充？按[从零安装](docs/INSTALL-FROM-ZERO.md)选一条路线即可。三条路线的区别只有一点：**能不能享受插件市场的自动更新**。
 
-```sh
-# A. 仓库公开后：一步安装（市场可跟踪仓库更新）
-dsh plugin add LingSuiYA/deepseek-web-import-f
+### A. 仓库公开后：一步安装
 
-# B. 当前方式：市场托管基线 + 本地补丁层
+市场可以跟踪本仓库的更新，装完即可持续升级。
+
+```sh
+dsh plugin add LingSuiYA/deepseek-web-import-f
+```
+
+### B. 当前方式：市场托管基线 + 本地补丁层
+
+市场继续管理上游版本，本补充作为补丁贴在其上；上游每次更新后需要重贴一次。
+
+```sh
 dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
 git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
 node deepseek-web-import-f/tools/apply-dlc.mjs
+```
 
-# C. 离线：本地 tgz（放弃市场更新）
+### C. 离线：本地 tgz
+
+适合内网或给别人试用，代价是放弃市场更新。
+
+```sh
 npm pack && dsh plugin add file:/absolute/path/deepseek-web-import-*.tgz
 ```
 

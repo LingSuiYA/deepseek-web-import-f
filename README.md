@@ -67,7 +67,7 @@ When items were found but none could be stored the line says `0/N`, which distin
 ### 3. Automatic refresh
 
 1.2 seconds after a successful import the page reloads once, so the new session appears
-in the sidebar without a manual F5.
+in the sidebar without a manual refresh.
 
 For several imports in a row, the batch mode counts them instead and exposes a single
 "Finish and refresh (N)" action. Both preferences live in `localStorage`.
@@ -114,16 +114,30 @@ Starting from a client that has neither upstream nor this supplement? Pick one r
 [Install from zero](docs/INSTALL-FROM-ZERO.md). The routes differ in exactly one respect:
 whether the plugin marketplace can keep the package updated.
 
-```sh
-# A. once this repository is public: one step, marketplace tracks the repository
-dsh plugin add LingSuiYA/deepseek-web-import-f
+### A. Once this repository is public: one step
 
-# B. today: marketplace-managed base + local overlay
+The marketplace tracks this repository, so the install keeps itself current.
+
+```sh
+dsh plugin add LingSuiYA/deepseek-web-import-f
+```
+
+### B. Today: marketplace-managed base + local overlay
+
+The marketplace keeps managing the upstream version; this supplement is a patch applied
+on top, re-applied after each upstream update.
+
+```sh
 dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
 git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
 node deepseek-web-import-f/tools/apply-dlc.mjs
+```
 
-# C. offline: a local tarball (no marketplace updates)
+### C. Offline: a local tarball
+
+For an intranet machine or a quick trial, at the cost of marketplace updates.
+
+```sh
 npm pack && dsh plugin add file:/absolute/path/deepseek-web-import-*.tgz
 ```
 
