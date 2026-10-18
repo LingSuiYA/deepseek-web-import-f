@@ -29,6 +29,9 @@ the text cleanup, result feedback and refresh behavior that go with them.
 - An upstream release restores the files this supplement touches; re-apply the overlay
   afterwards (see [Install and update](#install-and-update)).
 - For text-only imports, upstream on its own is enough.
+- Not affiliated with DeepSeek or with the upstream author. This is an unofficial,
+  community modification that reads the user's own conversations through DeepSeek's
+  internal web API; use it at your own risk.
 
 ## Why this supplement exists
 
@@ -46,7 +49,8 @@ actually usable.
 
 - **Images**: read the file id from the human turn's `FILE` fragment, refresh the signed
   path through `fetch_files`, download the `ty=p` preview, sniff the real raster type
-  from magic bytes, and store it through the DSH attachment service.
+  from magic bytes, and store it through the DSH attachment service. The preview endpoint
+  is capped at 12 MB per image, far above a normal screenshot.
 - **Documents**: fetch PDF / Word / text as the original bytes (`ty=r`) and **stream**
   them to a temporary file before `saveFileStream`. No 20 MB style limit: the ceiling
   follows the web client (100 MB per file, 50 files by default), with a 1 GiB runaway
