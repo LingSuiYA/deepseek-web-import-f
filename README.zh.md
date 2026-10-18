@@ -5,6 +5,8 @@
 将 [chat.deepseek.com](https://chat.deepseek.com) 网页端的**历史对话导入为 DeepSeek Harness (DSH) 的正式会话**：导入后会话出现在左侧工作区列表中，**可以打开、查看完整历史，并选择模型继续对话**。
 
 > 本项目是一个**可安装的 DSH 插件包**（`dsh.bundle` manifest：host 半部 + web client 半部），可通过 `dsh plugin add` 安装。安装方式见下文「安装」。
+>
+> **本仓库是上游 [`wpc0323/deepseek-web-import`](https://github.com/wpc0323/deepseek-web-import) 的 DLC 补丁层**：逐提交跟随上游 `0.2.0`，只额外增加一项能力——**导入对话里用户上传的图片**。文本导入、token 处理、格式兼容、双语界面都来自上游，本层不重复实现。见「[DLC 补丁层](#-dlc-补丁层图片导入)」。
 
 ---
 
@@ -15,10 +17,50 @@
 - 每条对话可选**目标工作区**，一键**导入为 DSH 会话**
 - 导入的会话：
   - 显示 DeepSeek 里的原标题
+  - **保留用户上传的图片**：下载后存为 DSH 附件，在会话中直接显示 *（DLC 新增）*
   - 可在其中**选模型继续对话**（走 DSH 正常 resume 路径，不会报 `cannot prepare session while it is live`）
   - 持久化在 `~/.dsh/sessions/<工作区>/` 下，重启 DSH 后仍在
 - 自动提取 `userToken` 中的 `value` 字段（兼容 `{"value":"...","__version":"0"}` 格式）
 - 内置「诊断」区，接口变更时可直接 GET 原始响应排查
+
+---
+
+## 🧩 DLC 补丁层：图片导入
+
+DeepSeek 不会把图片写进正文。上传的图片是用户消息上的 `FILE` fragment：
+
+```json
+{ "type": "FILE", "files": [{ "id": "file-…", "file_name": "image.png",
+  "is_image": true, "width": 2559, "height": 1440,
+  "status": "SUCCESS", "signed_path": "/file?file_id=…&state=…" }] }
+```
+
+字节不在 `history_messages` 里，而在带签名的 CDN 路径后面。因此导入时多做三步：
+
+1. `GET /api/v0/file/fetch_files?file_ids=…` 刷新描述信息——历史里带的
+   `signed_path` 可能已过期；
+2. 从 `https://files.deepseeksvc.com/api<path>?ty=p` 下载（`ty` 必填；
+   `&fmt=jpeg` 会转码，省略可能返回 WebP），走与其他请求相同的 `subprocess` 通道，
+   单张上限 12 MB；
+3. 用魔数识别真实格式，交给 DSH `attachments` 服务落盘，并在提问文本之后写入
+   `{ "type": "image", "attachment": … }` 内容块。
+
+下载或保存失败的图片会被跳过，**不影响文本导入**；结果行会显示「含图片 N 张」，
+全部失败时显示 `0/N`（原因见 DSH 日志）。PDF / Word 等非图片附件仍只导入文本。
+
+代码：`lib/images.js`（发现、下载、嗅探）、`lib/events.js`（`messageBlocks`）、
+`lib/index.js`（装配）、`lib/client.js`（计数展示）。
+
+### 跟随上游
+
+```sh
+git fetch upstream
+git rebase upstream/main      # 重放补丁提交
+npm test
+```
+
+`upstream` 是只读上游，`origin` 是本 DLC。补丁提交请保持小而独立，这样 rebase
+才是「重放」而不是「合并」。
 
 ---
 

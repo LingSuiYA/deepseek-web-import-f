@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.0-dlc.1 (2026-10-18)
+
+**DLC 补丁层**：基于上游 `0.2.0`，只新增「图片附件导入」这一项能力。
+
+> 早先针对上游 0.1.0 的 5 项兼容性修复（fragments 正文提取、会话 v4 header、
+> `stream` 字段、持久化 handle 调用、长对话截断）已被上游 0.2.0 全部吸收，
+> 本层不再单独维护；那段历史保留在 `legacy/0.1.0-flat` 分支。
+
+### 新增
+
+- **图片导入**：解析用户消息 `FILE` fragment 的 `files[]`（`id` / `file_name` /
+  `is_image` / `width` / `height` / `status` / `signed_path`，兼容 snake_case 与
+  camelCase），经 `GET /api/v0/file/fetch_files?file_ids=…` 刷新签名路径，再从
+  `https://files.deepseeksvc.com/api<path>?ty=p` 下载（`ty` 必填，`&fmt=jpeg` 转码，
+  省略时为 WebP），用魔数识别真实格式后交给 DSH `attachments` 服务落盘，并在
+  `user/message` 中写入 `{ type: 'image', attachment }`：文本在前、图片在后。
+- 单张图片失败不阻断文本导入；批量保存被拒时逐张重试。
+- 设置页结果新增「含图片 N 张」，全部失败时显示 `0/N`。
+- 新增 `lib/images.js` 与 `test/images.test.mjs`（字段兼容、MIME 嗅探、URL 构造、
+  事件拼装、下载/保存桩）。
+
+### 验证
+
+- 上游原有测试全部通过（`events` 28、`host-routes` 41、`http-limits` 6、`i18n` 5、
+  `persistence-evidence` 8），新增图片用例 9 项。
+- 真实账号端到端：4 条消息 / 1 图（`imageFiles=1, imageCount=1`）、42 条消息 / 无图
+  （回归），会话格式 v4。
+
 ## 0.2.0 (2026-10-14)
 
 ### 第二轮：i18n 与审阅修正

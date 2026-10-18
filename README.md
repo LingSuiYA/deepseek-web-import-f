@@ -5,6 +5,8 @@
 Import your [chat.deepseek.com](https://chat.deepseek.com) **conversation history as real DeepSeek Harness (DSH) sessions**: each import appears in the sidebar workspace list, **opens with its full history, and can be continued with any model**.
 
 > This is an **installable DSH plugin bundle** (`dsh.bundle` manifest: a host half plus a web client half), installed with `dsh plugin add`. See [Install](#install) below.
+>
+> **This repository is a DLC overlay on upstream [`wpc0323/deepseek-web-import`](https://github.com/wpc0323/deepseek-web-import).** It follows upstream `0.2.0` commit-for-commit and adds exactly one capability: **importing the images users uploaded to a conversation**. Text import, token handling, format compatibility and the localized UI all come from upstream unchanged. See [DLC overlay](#-dlc-overlay-images).
 
 ---
 
@@ -15,11 +17,56 @@ Import your [chat.deepseek.com](https://chat.deepseek.com) **conversation histor
 - Pick a **target workspace** per conversation and **import it as a DSH session** in one click
 - Imported sessions:
   - keep the original DeepSeek title
+  - **keep the pictures** the user uploaded: they are downloaded, stored as DSH attachments and rendered inline *(DLC addition)*
   - can be **continued with a model of your choice** (they take DSH's normal resume path, so they never hit `cannot prepare session while it is live`)
   - are persisted under `~/.dsh/sessions/<workspace>/` and survive a DSH restart
 - Extracts the `value` field from a `userToken` automatically (accepts the `{"value":"...","__version":"0"}` form)
 - A built-in **Diagnostics** section for requesting raw responses when the upstream API changes
 - **Localized UI** (English/Chinese) that follows the DSH/browser language and falls back to English
+
+---
+
+## 🧩 DLC overlay: images
+
+DeepSeek never puts a picture in the transcript. An upload is a `FILE` fragment
+on the human turn:
+
+```json
+{ "type": "FILE", "files": [{ "id": "file-…", "file_name": "image.png",
+  "is_image": true, "width": 2559, "height": 1440,
+  "status": "SUCCESS", "signed_path": "/file?file_id=…&state=…" }] }
+```
+
+The bytes live behind a signed CDN path, so an import does three extra steps
+before writing the session:
+
+1. `GET /api/v0/file/fetch_files?file_ids=…` refreshes the descriptors — the
+   `signed_path` carried by the history can be stale;
+2. download `https://files.deepseeksvc.com/api<path>?ty=p` (`ty` is mandatory;
+   `&fmt=jpeg` transcodes, omitting it may yield WebP) through the same
+   `subprocess` transport as every other request, capped at 12 MB per image;
+3. sniff the real raster type from magic bytes, commit the bytes through the DSH
+   `attachments` service, and reference them as `{ "type": "image", "attachment":
+   … }` blocks after the prompt text.
+
+A picture that cannot be fetched or stored is skipped: the text import still
+succeeds and the result line reports `images N` (or `0/N` when every picture was
+lost — see the DSH log for the reason). Non-image attachments (PDF, Word) remain
+text-only.
+
+Code: `lib/images.js` (discovery, download, sniffing), `lib/events.js`
+(`messageBlocks`), `lib/index.js` (wiring), `lib/client.js` (the count).
+
+### Staying in sync with upstream
+
+```sh
+git fetch upstream
+git rebase upstream/main      # replay the overlay commits
+npm test
+```
+
+`upstream` is the read-only remote; `origin` is this DLC. Keep overlay commits
+small and self-contained so a rebase stays a replay rather than a merge.
 
 ---
 
