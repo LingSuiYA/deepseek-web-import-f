@@ -118,9 +118,9 @@ Starting from a client that has neither upstream nor this supplement? Pick one r
 [Install from zero](docs/INSTALL-FROM-ZERO.md). The routes differ in exactly one respect:
 whether the plugin marketplace can keep the package updated.
 
-### A. Once this repository is public: one step
+### A. Install from the Git repository (one step)
 
-The marketplace tracks this repository, so the install keeps itself current.
+Installing straight from this repository lets the marketplace track it and keep the install current.
 
 ```sh
 dsh plugin add LingSuiYA/deepseek-web-import-f

@@ -6,15 +6,15 @@
 
 | 路线 | 适用 | 能享受市场更新 | 需要 |
 |---|---|---|---|
-| **A. 整包安装（推荐，仓库公开后）** | 装完即用，一条命令 | ✅ 市场按仓库 HEAD 检测 | 仓库公开 |
-| **B. 市场基线 + 补丁层（当前私有仓库）** | 想保留市场更新 | ✅ 基线更新；补丁需重贴 | clone 本仓库 + Node |
+| **A. 从 Git 仓库安装（推荐）** | 装完即用，一条命令 | ✅ 市场按仓库 HEAD 检测 | 能访问仓库 |
+| **B. 市场基线 + 补丁层** | 想保留市场更新 | ✅ 基线更新；补丁需重贴 | clone 本仓库 + Node |
 | **C. 本地 tgz（离线/一次性）** | 内网、无 Git、给别人试用 | ❌ 市场看不见 `file:` 来源 | 一个 tgz 文件 |
 
 > 三条路最终都是 `deepseek-web-import` 一个包，**同名同 Cordis row，装一个会替换另一个**。
 
 ---
 
-## A. 整包安装（仓库公开后）
+## A. 从 Git 仓库安装
 
 ```sh
 dsh plugin add LingSuiYA/deepseek-web-import-f
@@ -43,7 +43,7 @@ git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
 cd deepseek-web-import-f
 ```
 
-私有仓库需要先配好 SSH 密钥（或改用 HTTPS + Personal Access Token）。
+如果仓库不可匿名访问，需要先配好 SSH 密钥（或改用 HTTPS + Personal Access Token）。
 
 ### 3. 贴补丁
 
