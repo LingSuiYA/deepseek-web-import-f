@@ -26,8 +26,9 @@ The only thing added here is what an import used to drop: pictures, documents, a
 the text cleanup, result feedback and refresh behavior that go with them.
 
 - Same package name and same Cordis row as upstream, so installing one replaces the other.
-- An upstream release restores the files this supplement touches; re-apply the overlay
-  afterwards (see [Install and update](#install-and-update)).
+- Reinstalling upstream, switching the base, or reinstalling from the marketplace restores
+  the files this supplement touches; re-apply the overlay afterwards (see
+  [Install and update](#install-and-update)).
 - For text-only imports, upstream on its own is enough.
 - Not affiliated with DeepSeek or with the upstream author. This is an unofficial,
   community modification that reads the user's own conversations through DeepSeek's
@@ -76,9 +77,9 @@ The full acceptance checklist and failure table live in
   from magic bytes, and store it through the DSH attachment service. The preview endpoint
   is capped at 12 MB per image, far above a normal screenshot.
 - **Documents**: fetch PDF / Word / text as the original bytes (`ty=r`) and **stream**
-  them to a temporary file before `saveFileStream`. No extra size cap: the ceiling
-  follows the web client (100 MB per file, 50 files by default), with a 1 GiB runaway
-  guard as the only bound.
+  them to a temporary file before `saveFileStream`. The importer adds no cap of its own:
+  the web client's default is 100 MB per file and 50 files, and the only guard here is a
+  1 GiB runaway limit.
 - **Failure isolation**: one failed picture or document is skipped; the text and the
   session are still written.
 - **Text cleanup**: `[reference:N]` citation markers and stray `<br>` tags are removed;
@@ -156,7 +157,8 @@ with `git ls-remote failed`, so use route B instead.
 
 ### B. Pinned upstream base + local overlay
 
-The marketplace installs the upstream base; this supplement is a patch applied on top.
+Install the upstream base first; this supplement is a patch applied on top (this route
+does not install this repository's package, it modifies the installed upstream files).
 The base is pinned to upstream `0.2.0`, commit `7727f18`, so the patch anchors stay stable.
 
 ```sh
@@ -183,8 +185,8 @@ For an intranet machine or a quick trial, at the cost of marketplace updates.
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.12.tgz
-# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.12.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.13.tgz
+# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.13.tgz
 ```
 
 The tarball contains `lib/`, `docs/`, `tools/`, `cordis.patch.yml` and both READMEs.
@@ -199,8 +201,9 @@ anchor, upstream changed a patched file and this repository needs a rebase first
 
 ## Uninstall and rollback
 
-- **Back to upstream**: run `dsh plugin add <upstream archive URL>`; the same package name
-  is replaced and the overlay goes with it.
+- **Back to upstream**: run `dsh plugin add <upstream archive URL>` (URL in
+  [Install from zero](docs/INSTALL-FROM-ZERO.md)); the same package name is replaced and
+  the overlay goes with it.
 - **Roll back only the client half** (keeping images, documents and text cleanup).
   `git clone` brings only `origin`, so add `upstream` first:
 

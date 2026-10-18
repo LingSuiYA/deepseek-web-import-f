@@ -37,7 +37,7 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 ---
 
-## B. 市场基线 + 补丁层
+## B. 固定上游基线 + 补丁层
 
 ### 1. 装上游基线（钉在 0.2.0）
 
@@ -78,7 +78,7 @@ DSH_PLUGIN_DIR=/path/to/pkg node tools/apply-dlc.mjs
 | 3 | Markdown 清洗（`[reference:N]`、`<br>`） |
 | 4 | 导入后自动刷新（可关） |
 | 5 | 批量导入 + 客户端预热 |
-| 6 | 宿主端投影缓存 checkpoint（标题立即显示） |
+| 6 | 宿主端投影缓存预热（用于标题显示） |
 
 ### 4. 重启或重新加载插件
 
@@ -125,7 +125,7 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
 3. 「获取对话目录」能列出会话
 4. 导入一条**带图片**的对话：结果行出现「含图片 N 张」，会话里图片正常显示
 5. 导入一条**带文档**的对话：结果行出现「含附件 N 个」，附件可打开
-6. 导入后**不点开**，侧边栏直接显示 DeepSeek 标题（而不是「未命名」）
+6. 导入后**不点开**，侧边栏尽量直接显示 DeepSeek 标题；若仍是「未命名」，按故障表检查 `titleCached`
 7. 勾「批量导入」，连续导入 2 条，点「完成导入并刷新」，侧边栏一次出现两条
 
 ---
@@ -135,7 +135,7 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | `web boot: 1 entry did not activate` / `import failed` | 启动期客户端模块加载失败（偶发，重建 bundle 时容易撞上） | 重启；仍失败时用对话框「禁用第三方插件」先拉起，再回滚客户端（见下） |
-| `dsh plugin add github:...` 报 `git ls-remote failed` | 宿主 PATH 没有 `git` | 改用归档 URL（路线 B 第 1 步） |
+| 路线 A 报 `git ls-remote failed` | 宿主 PATH 没有 `git` | 改用路线 B 的归档 URL |
 | 换基线或重装后图片/文档功能消失 | 补丁层被还原 | 重跑 `node tools/apply-dlc.mjs` |
 | 导入结果 `images 0/N` | 图片下载失败 | 看 DSH 日志；确认 `userToken` 未过期 |
 | 侧边栏「未命名」 | 投影缓存无该会话的行 | 导入结果里的 `titleCached` 字段可判断：`written` 正常，`error`/`no_cache` 表示宿主缺少对应服务 |

@@ -21,7 +21,7 @@
 我们只补齐「导入时会丢失的东西」：图片、文档附件，以及随之而来的正文清洗、结果反馈和刷新体验。
 
 - 与上游**同名、同 Cordis row**，安装本包会替换上游包，二选一。
-- 上游发布新版本后，被修改过的文件会被还原，需要重新贴一次补丁（见「安装与更新」）。
+- 重装上游、更换基线或从市场重装后，被修改过的文件会被还原，需要重新贴一次补丁（见「安装与更新」）。
 - 只想用纯文本导入的话，直接用上游即可。
 - 本项目与 DeepSeek 官方无关，也不代表上游作者；它通过非官方内部接口读取**用户自己的**对话数据，使用风险由使用者承担。
 
@@ -54,7 +54,7 @@
 ### 1. 图片与附件
 
 - **图片**：从用户消息的 `FILE` fragment 取文件 ID，经 `fetch_files` 刷新签名路径，用 `ty=p` 下载预览图；按魔数识别真实格式后交给 DSH 附件服务，会话里直接显示。预览接口单张上限 12 MB，正常截图远小于此。
-- **文档**：PDF / Word / 文本等按 `ty=r` 取原件，**流式落盘**（先写临时文件，再交给 `saveFileStream`），不受额外的人为大小限制；上限跟随网页端（默认单文件 100 MB、最多 50 个），只保留 1 GiB 的失控保护。
+- **文档**：PDF / Word / 文本等按 `ty=r` 取原件，**流式落盘**（先写临时文件，再交给 `saveFileStream`），不额外设限。网页端默认单文件 100 MB、最多 50 个是它的上传限制；导入侧只保留 1 GiB 的失控保护。
 - **失败隔离**：单张图片或单个文档失败只跳过它，文本与会话照常写入。
 - **正文清洗**：去掉 `[reference:N]` 引用标记和孤立的 `<br>`，围栏代码块内的内容保持原样。
 
@@ -119,7 +119,7 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 ### B. 固定上游基线 + 本地补丁层
 
-市场安装上游基线，本补充作为补丁贴在其上。基线钉在上游 `0.2.0` 的提交 `7727f18`，保证补丁锚点稳定。
+先安装上游基线，本补充作为补丁贴在其上（这条路线不安装本仓库的包，而是直接修改已安装的上游文件）。基线钉在上游 `0.2.0` 的提交 `7727f18`，保证补丁锚点稳定。
 
 ```sh
 dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
@@ -144,8 +144,8 @@ $env:DSH_PLUGIN_DIR = "C:\path\to\pkg"; node tools/apply-dlc.mjs
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.12.tgz
-# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.12.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.13.tgz
+# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.13.tgz
 ```
 
 包内包含 `lib/`、`docs/`、`tools/`、`cordis.patch.yml` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
@@ -156,7 +156,7 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.12.tgz
 
 ## 卸载与回滚
 
-- **回到上游**：重新执行 `dsh plugin add <上游归档 URL>`，同名替换，补丁层随之消失。
+- **回到上游**：重新执行 `dsh plugin add <上游归档 URL>`（URL 见[从零安装](docs/INSTALL-FROM-ZERO.md)），同名替换，补丁层随之消失。
 - **只回滚客户端**（保留图片、附件与正文清洗）。`git clone` 只带来 `origin`，先补上 `upstream`：
 
   ```bash
