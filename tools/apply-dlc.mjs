@@ -281,5 +281,27 @@ import { importImages } from './images.js'`)
   console.log('stage 2 applied: document attachments (streamed, no size cap below the web limit)')
 }
 
+/* ---------------------------------------------------------------- stage 3 */
+if (!read(eventsPath).includes('cleanDeepSeekMarkdown')) {
+  writeSafely(path.join(lib, 'text.js'), read(path.join(repoRoot, 'lib', 'text.js')))
+
+  replaceOnce(eventsPath,
+    `import { assistantMessageData, SURFACE_APPEND } from './formats.js'`,
+    `import { assistantMessageData, SURFACE_APPEND } from './formats.js'
+import { cleanDeepSeekMarkdown } from './text.js'`)
+
+  replaceOnce(eventsPath,
+    `    const text = fragmentText(message, USER_TEXT_FRAGMENTS) || legacyText(message.content)`,
+    `    const text = cleanDeepSeekMarkdown(fragmentText(message, USER_TEXT_FRAGMENTS) || legacyText(message.content))`)
+
+  replaceOnce(eventsPath,
+`  const reasoning = fragmentText(message, ASSISTANT_THINKING_FRAGMENTS)
+  const answer = fragmentText(message, ASSISTANT_ANSWER_FRAGMENTS) || legacyText(message.content)`,
+`  const reasoning = cleanDeepSeekMarkdown(fragmentText(message, ASSISTANT_THINKING_FRAGMENTS))
+  const answer = cleanDeepSeekMarkdown(fragmentText(message, ASSISTANT_ANSWER_FRAGMENTS) || legacyText(message.content))`)
+
+  console.log('stage 3 applied: markdown cleanup (citation markers, stray <br>)')
+}
+
 console.log('overlay is up to date')
 console.log('restart DSH (or toggle the plugin) to load the patched host half.')

@@ -13,6 +13,8 @@
 
 - 导入后的人话轮保留图片：下载 → 存为 DSH 附件 → 在提问文本之后内联显示。
 - 同时保留**文档附件**（PDF / Word / 文本等），原名原字节。
+- 文本按普通 Markdown 查看器做规范化：DeepSeek 的 `[reference:N]` 引用标记（目标不在历史负载里）
+  和零散的 `<br>` 会被清除，围栏代码块内保持原样。
 - 结果行报告保留数量（`含图片 N 张`、`含附件 N 个`）；找到但一个都没存下时显示 `0/N`。
 - 单个附件下载或解码失败只跳过它，文本导入照常完成。
 
@@ -46,10 +48,11 @@ DeepSeek 把上传物挂在用户消息的 `FILE` fragment 上：
 |---|---|
 | `lib/images.js` | 图片发现、下载、嗅探（新增文件） |
 | `lib/files.js` | 文档发现、流式下载、保存（新增文件） |
+| `lib/text.js` | Markdown 清洗，代码块保持原样（新增文件） |
 | `lib/events.js` | `messageBlocks(message, role, images, files)`、`buildSessionEvents(…, imagesByMessage, filesByMessage)` |
 | `lib/index.js` | 写会话前跑两趟流程，返回 `imageFiles`/`imageCount`、`fileFiles`/`fileCount` |
 | `lib/client.js` | 结果行显示图片/附件数量（中英双语） |
-| `test/images.test.mjs`、`test/files.test.mjs` | 共 18 项：解析、URL、事件拼装、下载/保存流水线、大小保护 |
+| `test/images.test.mjs`、`test/files.test.mjs`、`test/text.test.mjs` | 共 22 项：解析、URL、事件拼装、下载/保存流水线、大小保护、清洗 |
 
 ## 安装与更新
 

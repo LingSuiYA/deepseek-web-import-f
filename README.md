@@ -17,6 +17,9 @@ This page documents only the overlay.
   DSH attachment, and rendered inline after the prompt text.
 - It also keeps **documents** (PDF, Word, text, …) as file attachments, with their
   original names and bytes.
+- Text is normalized for a plain Markdown viewer: DeepSeek's `[reference:N]`
+  citation markers (their targets are not in the history payload) and stray
+  `<br>` tags are removed, while fenced code blocks are left untouched.
 - The result line reports how many were kept (`N images`, `N files`), or `0/N` when
   items were found but none could be stored.
 - An attachment that fails to download or decode is skipped; the text import still succeeds.
@@ -56,10 +59,11 @@ rather than heap.
 |---|---|
 | `lib/images.js` | image discovery, download, sniffing (new file) |
 | `lib/files.js` | document discovery, streamed download, save (new file) |
+| `lib/text.js` | markdown cleanup, code fences preserved (new file) |
 | `lib/events.js` | `messageBlocks(message, role, images, files)` and `buildSessionEvents(…, imagesByMessage, filesByMessage)` |
 | `lib/index.js` | runs both passes before writing, reports the counts |
 | `lib/client.js` | localized image/file counts in the result line |
-| `test/images.test.mjs`, `test/files.test.mjs` | 18 cases: parsing, URLs, event assembly, download/save pipeline, size guard |
+| `test/images.test.mjs`, `test/files.test.mjs`, `test/text.test.mjs` | 22 cases: parsing, URLs, event assembly, download/save pipeline, size guard, cleanup |
 
 ## Install and update
 
