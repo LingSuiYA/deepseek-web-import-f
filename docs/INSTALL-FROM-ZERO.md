@@ -28,6 +28,8 @@
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
+等价写法：`dsh plugin add github:LingSuiYA/deepseek-web-import-f`。
+
 - 需要能访问本仓库；无权限时会直接报鉴权失败。
 - 如果宿主进程的 PATH 里没有 `git`，`dsh plugin add` 的 `github:` 解析会失败；改用路线 B 的归档 URL。
 - 装完**重启 DSH**，设置 → DeepSeek 对话导入。
@@ -43,7 +45,7 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
 ```
 
-固定提交而不是 `main`，这样补丁锚点不会因为上游推送而漂移。**不要**用 `file:` 装本仓库的 tgz——那会让市场失去更新能力。
+固定提交而不是 `main`，这样补丁锚点不会因为上游推送而漂移。这条基线**不会自动升级**：跟进上游时换新的提交归档并重跑补丁。也**不要**用 `file:` 装本仓库的 tgz——那会放弃市场管理。
 
 ### 2. 取本仓库（补丁层与脚本都在里面）
 
@@ -107,10 +109,11 @@ npm pack          # 产出 deepseek-web-import-0.2.0-dlc.N.tgz
 
 ```sh
 dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
+# Windows: dsh plugin add file:C:/path/to/deepseek-web-import-0.2.0-dlc.N.tgz
 ```
 
 - 这条路线**没有市场更新**：市场只更新能重新解析的来源（`npm:` / `github:` / 固定归档 URL）。
-- 包内包含 `lib/`、`docs/`、`tools/` 和两个 README；Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
+- 包内包含 `lib/`、`docs/`、`tools/`、`cordis.patch.yml` 和两个 README；Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
 - 升级时重复「打包 → 卸载旧的 → 装新的」。
 
 ---
@@ -133,19 +136,24 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
 |---|---|---|
 | `web boot: 1 entry did not activate` / `import failed` | 启动期客户端模块加载失败（偶发，重建 bundle 时容易撞上） | 重启；仍失败时用对话框「禁用第三方插件」先拉起，再回滚客户端（见下） |
 | `dsh plugin add github:...` 报 `git ls-remote failed` | 宿主 PATH 没有 `git` | 改用归档 URL（路线 B 第 1 步） |
-| 市场更新后图片/文档功能消失 | 补丁层被还原 | 重跑 `node tools/apply-dlc.mjs` |
+| 换基线或重装后图片/文档功能消失 | 补丁层被还原 | 重跑 `node tools/apply-dlc.mjs` |
 | 导入结果 `images 0/N` | 图片下载失败 | 看 DSH 日志；确认 `userToken` 未过期 |
 | 侧边栏「未命名」 | 投影缓存无该会话的行 | 导入结果里的 `titleCached` 字段可判断：`written` 正常，`error`/`no_cache` 表示宿主缺少对应服务 |
 | 补丁脚本报 anchor 不匹配 | 上游改了被 patch 的文件 | 需要 rebase 本仓库，而不是强行重试 |
 
 ### 只回滚客户端（保留导入功能）
 
+`git clone` 只带来 `origin`，先补上 `upstream`：
+
 ```bash
-git -C deepseek-web-import-f show upstream/main:lib/client.js \
+cd deepseek-web-import-f
+git remote add upstream https://github.com/wpc0323/deepseek-web-import.git
+git fetch upstream
+git show upstream/main:lib/client.js \
   > ~/.dsh/profiles/desktop/node_modules/deepseek-web-import/lib/client.js
 ```
 
-Windows 的 cmd 不展开 `~`，profile 目录通常写作 `%USERPROFILE%\.dsh\profiles\desktop`；profile 名不是 `desktop` 时请替换。
+在 Windows 上请用 **Git Bash**：cmd 不展开 `~`，PowerShell 5.1 的 `>` 默认写 UTF-16，会把 `client.js` 写坏、插件加载失败。profile 目录通常是 `%USERPROFILE%\.dsh\profiles\desktop`，profile 名不是 `desktop` 时请替换。
 
 ### 完全回滚到上游
 

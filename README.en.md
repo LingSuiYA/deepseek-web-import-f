@@ -149,6 +149,8 @@ Installing straight from this repository lets the marketplace track it.
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
+Equivalent: `dsh plugin add github:LingSuiYA/deepseek-web-import-f`.
+
 The repository must be reachable; when the host's PATH has no `git`, the command fails
 with `git ls-remote failed`, so use route B instead.
 
@@ -165,7 +167,14 @@ node tools/apply-dlc.mjs
 ```
 
 The default target is `~/.dsh/profiles/desktop/node_modules/deepseek-web-import`; when
-the profile has another name, pass the package directory or set `DSH_PLUGIN_DIR`.
+the profile has another name, pass the package directory or set the environment variable:
+
+```sh
+# POSIX
+DSH_PLUGIN_DIR=/path/to/pkg node tools/apply-dlc.mjs
+# PowerShell
+$env:DSH_PLUGIN_DIR = "C:\path\to\pkg"; node tools/apply-dlc.mjs
+```
 
 ### C. Offline: a local tarball
 
@@ -174,11 +183,12 @@ For an intranet machine or a quick trial, at the cost of marketplace updates.
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.11.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.12.tgz
+# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.12.tgz
 ```
 
-The tarball contains `lib/`, `docs/`, `tools/` and both READMEs. Windows shells do not
-expand `*`, so write the actual file name.
+The tarball contains `lib/`, `docs/`, `tools/`, `cordis.patch.yml` and both READMEs.
+Windows shells do not expand `*`, so write the actual file name.
 
 A fixed-commit archive never upgrades by itself. To follow upstream, point that URL at a
 newer upstream commit and run `node tools/apply-dlc.mjs` again; if it reports a moved
@@ -191,15 +201,23 @@ anchor, upstream changed a patched file and this repository needs a rebase first
 
 - **Back to upstream**: run `dsh plugin add <upstream archive URL>`; the same package name
   is replaced and the overlay goes with it.
-- **Roll back only the client half** (keeping images, documents and text cleanup):
+- **Roll back only the client half** (keeping images, documents and text cleanup).
+  `git clone` brings only `origin`, so add `upstream` first:
 
   ```bash
-  git -C deepseek-web-import-f show upstream/main:lib/client.js \
+  cd deepseek-web-import-f
+  git remote add upstream https://github.com/wpc0323/deepseek-web-import.git
+  git fetch upstream
+  git show upstream/main:lib/client.js \
     > ~/.dsh/profiles/desktop/node_modules/deepseek-web-import/lib/client.js
   ```
 
-  Windows cmd does not expand `~`; the profile lives at `%USERPROFILE%\.dsh\profiles\desktop`
-  unless it has another name.
+  Run this in **Git Bash** on Windows: cmd does not expand `~`, and PowerShell 5.1's `>`
+  writes UTF-16, which corrupts `client.js` and makes the plugin fail to load. The
+  profile lives at `%USERPROFILE%\.dsh\profiles\desktop` unless it has another name.
+
+  Simpler alternative: reinstall upstream ("Back to upstream" above); the client half is
+  restored too.
 - **Remove from the marketplace**: Settings → Plugins → find `deepseek-web-import` → remove.
 
 ## Compatibility and limits

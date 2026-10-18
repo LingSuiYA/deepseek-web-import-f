@@ -113,6 +113,8 @@ DeepSeek 历史
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
+等价写法：`dsh plugin add github:LingSuiYA/deepseek-web-import-f`。
+
 需要能访问本仓库；宿主 PATH 里没有 `git` 时这条命令会报 `git ls-remote failed`，改用 B。
 
 ### B. 固定上游基线 + 本地补丁层
@@ -126,7 +128,14 @@ cd deepseek-web-import-f
 node tools/apply-dlc.mjs
 ```
 
-默认目标是 `~/.dsh/profiles/desktop/node_modules/deepseek-web-import`；profile 名不同时用 `node tools/apply-dlc.mjs <包目录>` 或 `DSH_PLUGIN_DIR=<包目录>` 指定。
+默认目标是 `~/.dsh/profiles/desktop/node_modules/deepseek-web-import`；profile 名不同时用 `node tools/apply-dlc.mjs <包目录>` 指定，或设置环境变量：
+
+```sh
+# POSIX
+DSH_PLUGIN_DIR=/path/to/pkg node tools/apply-dlc.mjs
+# PowerShell
+$env:DSH_PLUGIN_DIR = "C:\path\to\pkg"; node tools/apply-dlc.mjs
+```
 
 ### C. 离线：本地 tgz
 
@@ -135,10 +144,11 @@ node tools/apply-dlc.mjs
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.11.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.12.tgz
+# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.12.tgz
 ```
 
-包内包含 `lib/`、`docs/`、`tools/` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
+包内包含 `lib/`、`docs/`、`tools/`、`cordis.patch.yml` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
 
 基线是固定提交的归档，市场不会自动升级它。需要跟进上游时，把上面的 URL 换成新的上游提交归档，再重跑 `node tools/apply-dlc.mjs`；如果脚本报锚点不匹配，说明上游改了被 patch 的文件，先 rebase 本仓库，重试没有用。
 
@@ -147,14 +157,19 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.11.tgz
 ## 卸载与回滚
 
 - **回到上游**：重新执行 `dsh plugin add <上游归档 URL>`，同名替换，补丁层随之消失。
-- **只回滚客户端**（保留图片、附件与正文清洗）：
+- **只回滚客户端**（保留图片、附件与正文清洗）。`git clone` 只带来 `origin`，先补上 `upstream`：
 
   ```bash
-  git -C deepseek-web-import-f show upstream/main:lib/client.js \
+  cd deepseek-web-import-f
+  git remote add upstream https://github.com/wpc0323/deepseek-web-import.git
+  git fetch upstream
+  git show upstream/main:lib/client.js \
     > ~/.dsh/profiles/desktop/node_modules/deepseek-web-import/lib/client.js
   ```
 
-  Windows 的 cmd 不展开 `~`，profile 目录通常写作 `%USERPROFILE%\.dsh\profiles\desktop`；profile 名不是 `desktop` 时请替换。
+  在 Windows 上请用 **Git Bash** 执行：cmd 不展开 `~`，而 PowerShell 5.1 的 `>` 默认写 UTF-16，会把 `client.js` 写坏、插件直接加载失败。profile 目录通常是 `%USERPROFILE%\.dsh\profiles\desktop`，profile 名不是 `desktop` 时替换。
+
+  更省事的替代：直接重装上游（上一条「回到上游」），客户端也会一并还原。
 - **从市场移除**：设置 → 插件 → 找到 `deepseek-web-import` 移除。
 
 ## 兼容性与限制

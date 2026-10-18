@@ -1,6 +1,6 @@
 {
   "name": "deepseek-web-import",
-  "version": "0.2.0-dlc.11",
+  "version": "0.2.0-dlc.12",
   "description": "Import chat.deepseek.com conversations into DeepSeek Harness as resumable sessions. Feature supplement for upstream 0.2.0: imports images and documents, cleans the markdown, and refreshes the session list.",
   "type": "module",
   "repository": {
@@ -51,7 +51,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "node --test \"test/*.test.mjs\"",
+    "test": "node test/run.mjs",
     "test:serve": "echo 'run test/compat.mjs and test/live-import.mjs from a DSH install directory (see docs/COMPATIBILITY.md)'"
   }
 }

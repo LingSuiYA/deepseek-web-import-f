@@ -2,6 +2,21 @@
 
 > `0.2.0-dlc.*` 是本仓库的版本；其下的 `0.2.0` 及更早条目来自上游，保留用于追溯基线。
 
+## 0.2.0-dlc.12 (2026-10-18)
+
+### 修正（来自一次无上下文的新用户审阅）
+
+- **回滚命令现在先补 `upstream` 远端**：`git clone` 只带来 `origin`，原命令会直接失败。
+- **Windows 回滚改用 Git Bash 说明**：PowerShell 5.1 的 `>` 默认写 UTF-16，会把 `client.js` 写坏；并给出「直接重装上游」的更省事替代。
+- 路线 A 补上等价写法 `github:LingSuiYA/deepseek-web-import-f`，消除裸 `owner/repo` 与 `github:` 两种写法的歧义。
+- 路线 C 补 Windows 的 `file:C:/...` 示例；离线包清单补上 `cordis.patch.yml`。
+- `DSH_PLUGIN_DIR` 补充 PowerShell 写法。
+- 故障表把「市场更新」改为「换基线或重装」，与固定基线的实际行为一致。
+
+### 测试
+
+- `npm test` 改为 `node test/run.mjs`：不再依赖 shell 展开 `test/*.test.mjs`（Node 18/20 的 `--test` 不支持 glob，Windows cmd 也不展开），在 Node 18+ 与任何 shell 下都能运行。
+
 ## 0.2.0-dlc.11 (2026-10-18)
 
 ### 修正
