@@ -59,6 +59,10 @@ DeepSeek 把上传物挂在用户消息的 `FILE` fragment 上：
 
 ## 安装与更新
 
+> 目标客户端**既没有上游插件、也没有本补丁层**？看
+> [docs/INSTALL-FROM-ZERO.md](docs/INSTALL-FROM-ZERO.md)：三条路线（公开后一步安装 /
+> 市场基线 + 补丁 / 离线 tgz）、验收清单和故障表都在里面。
+
 插件市场只会更新它能重新解析的来源（`npm:`、`github:`、固定归档 URL）；用 `file:`
 装的本地 tgz 市场看不见。所以让市场托管基线，再把补丁层贴上去：
 

@@ -73,6 +73,11 @@ rather than heap.
 
 ## Install and update
 
+> Starting from a client that has neither the upstream plugin nor this overlay?
+> See [docs/INSTALL-FROM-ZERO.md](docs/INSTALL-FROM-ZERO.md) for the three routes
+> (public single-step, market base + overlay, offline tarball), the acceptance
+> checklist, and the failure table.
+
 The marketplace only updates sources it can re-resolve (`npm:`, `github:`, or a
 fixed archive URL); a `file:` tarball is invisible to it. Keep the base
 market-managed and re-apply the overlay:
