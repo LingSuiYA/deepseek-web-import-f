@@ -103,7 +103,7 @@ DeepSeek 历史
 
 ## 安装与更新
 
-目标客户端既没有上游插件、也没有本补充？按[从零安装](docs/INSTALL-FROM-ZERO.md)选一条路线即可。三条路线的区别只有一点：**能不能享受插件市场的自动更新**。
+目标客户端既没有上游插件、也没有本补充？按[从零安装](docs/INSTALL-FROM-ZERO.md)选一条路线即可。三条路线的区别主要是：装完之后，市场能不能替你继续更新。
 
 ### A. 从 Git 仓库安装（一步到位）
 
@@ -115,9 +115,9 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 需要能访问本仓库；宿主 PATH 里没有 `git` 时这条命令会报 `git ls-remote failed`，改用 B。
 
-### B. 市场托管基线 + 本地补丁层
+### B. 固定上游基线 + 本地补丁层
 
-市场管理上游基线，本补充作为补丁贴在其上。基线钉在上游 `0.2.0` 的提交 `7727f18`，保证补丁锚点稳定。
+市场安装上游基线，本补充作为补丁贴在其上。基线钉在上游 `0.2.0` 的提交 `7727f18`，保证补丁锚点稳定。
 
 ```sh
 dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
@@ -135,12 +135,12 @@ node tools/apply-dlc.mjs
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.10.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.11.tgz
 ```
 
 包内包含 `lib/`、`docs/`、`tools/` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
 
-市场会更新基线，但**补丁层会随更新消失**：更新后重跑 `node tools/apply-dlc.mjs`；如果脚本报锚点不匹配，说明上游改了被 patch 的文件，需要先 rebase 本仓库，而不是继续重试。
+基线是固定提交的归档，市场不会自动升级它。需要跟进上游时，把上面的 URL 换成新的上游提交归档，再重跑 `node tools/apply-dlc.mjs`；如果脚本报锚点不匹配，说明上游改了被 patch 的文件，先 rebase 本仓库，重试没有用。
 
 > 宿主半部的改动需要重启 DSH，或在「设置 → 插件」里把对应条目关闭再启用；纯客户端改动（刷新、批量）刷新页面即可。
 

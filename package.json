@@ -1,6 +1,6 @@
 {
   "name": "deepseek-web-import",
-  "version": "0.2.0-dlc.10",
+  "version": "0.2.0-dlc.11",
   "description": "Import chat.deepseek.com conversations into DeepSeek Harness as resumable sessions. Feature supplement for upstream 0.2.0: imports images and documents, cleans the markdown, and refreshes the session list.",
   "type": "module",
   "repository": {
@@ -32,8 +32,13 @@
     "cordis.patch.yml",
     "README.md",
     "README.en.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "keywords": [
     "dsh",
     "deepseek-harness",

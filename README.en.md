@@ -138,8 +138,8 @@ DeepSeek history
 ## Install and update
 
 Starting from a client that has neither upstream nor this supplement? Pick one route in
-[Install from zero](docs/INSTALL-FROM-ZERO.md). The routes differ in exactly one respect:
-whether the plugin marketplace can keep the package updated.
+[Install from zero](docs/INSTALL-FROM-ZERO.md). The routes differ mainly in whether the
+marketplace can keep the install updated afterwards.
 
 ### A. Install from the Git repository (one step)
 
@@ -152,9 +152,9 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 The repository must be reachable; when the host's PATH has no `git`, the command fails
 with `git ls-remote failed`, so use route B instead.
 
-### B. Marketplace-managed base + local overlay
+### B. Pinned upstream base + local overlay
 
-The marketplace manages the upstream base; this supplement is a patch applied on top.
+The marketplace installs the upstream base; this supplement is a patch applied on top.
 The base is pinned to upstream `0.2.0`, commit `7727f18`, so the patch anchors stay stable.
 
 ```sh
@@ -174,15 +174,15 @@ For an intranet machine or a quick trial, at the cost of marketplace updates.
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.10.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.11.tgz
 ```
 
 The tarball contains `lib/`, `docs/`, `tools/` and both READMEs. Windows shells do not
 expand `*`, so write the actual file name.
 
-A marketplace update restores the upstream files, so the overlay disappears: run
-`node tools/apply-dlc.mjs` again. If it reports a moved anchor, upstream changed a patched
-file and this repository needs a rebase first — retrying will not help.
+A fixed-commit archive never upgrades by itself. To follow upstream, point that URL at a
+newer upstream commit and run `node tools/apply-dlc.mjs` again; if it reports a moved
+anchor, upstream changed a patched file and this repository needs a rebase first.
 
 > Host-half changes need a DSH restart, or disabling and re-enabling the entry under
 > Settings → Plugins; client-only changes (refresh, batch mode) take effect on a page refresh.
