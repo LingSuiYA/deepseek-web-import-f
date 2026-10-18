@@ -31,6 +31,24 @@
 
 这些都不影响「能不能导入」，但决定了「导进来能不能用」。
 
+## 快速开始
+
+1. **装插件**：按[安装与更新](#安装与更新)选一条路线，装完重启 DSH。
+2. **打开设置 → DeepSeek 对话导入**。
+3. **粘贴 userToken**：浏览器登录 chat.deepseek.com → `F12` → `Application` → `Local Storage` → 复制 `userToken` 的值 → 粘贴并保存（插件会自动取出 `value` 字段）。
+4. **获取对话目录 → 选目标工作区 → 导入为会话**。结果行会显示消息数、`含图片 N 张` / `含附件 N 个`；默认自动刷新，侧边栏直接出现新会话。
+
+完整的验收清单和故障排查见[从零安装](docs/INSTALL-FROM-ZERO.md)。
+
+## 前置条件
+
+- **DSH 0.2.x**（实测 `0.2.1-rc.2`），会话格式 v4。
+- **Node.js ≥ 18**：路线 B/C 需要它跑补丁脚本和打包。
+- **git**：路线 A/B 需要；宿主进程的 PATH 里没有 `git` 时，路线 A 会失败。
+- **能访问 GitHub**：路线 A/B 依赖。
+- **一个 DeepSeek 网页账号**：用来获取 `userToken`。
+- 插件市场（dshmarket）可选，只影响更新提示。
+
 ## 核心特性
 
 ### 1. 图片与附件
@@ -56,7 +74,7 @@
 
 - 错误码沿用上游约定（`no_token`、`api`、`too_large`、`persist` 等），新增失败只影响对应附件。
 - 图片或文档任一环节出错，都会继续写会话，不会整体失败。
-- 导入结果附带 `titleCached` 字段（`written` / `ok` / `error` / `no_cache`），用于判断标题缓存是否写入。
+- 启动失败、标题未命名等排查细节见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。
 - 启动期若出现 `deepseek-web-import: import failed`，可先用启动对话框的「禁用第三方插件」拉起 DSH，再只回滚客户端文件（命令见[从零安装](docs/INSTALL-FROM-ZERO.md)）。
 
 ## 实现
@@ -89,37 +107,59 @@ DeepSeek 历史
 
 ### A. 从 Git 仓库安装（一步到位）
 
-直接以本仓库为安装源，市场可以跟踪仓库更新，装完即可持续升级。
+直接以本仓库为安装源，市场可以跟踪仓库更新。
 
 ```sh
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
+需要能访问本仓库；宿主 PATH 里没有 `git` 时这条命令会报 `git ls-remote failed`，改用 B。
+
 ### B. 市场托管基线 + 本地补丁层
 
-市场继续管理上游版本，本补充作为补丁贴在其上；上游每次更新后需要重贴一次。
+市场管理上游基线，本补充作为补丁贴在其上。基线钉在上游 `0.2.0` 的提交 `7727f18`，保证补丁锚点稳定。
 
 ```sh
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
-git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
-node deepseek-web-import-f/tools/apply-dlc.mjs
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
+git clone https://github.com/LingSuiYA/deepseek-web-import-f.git
+cd deepseek-web-import-f
+node tools/apply-dlc.mjs
 ```
+
+默认目标是 `~/.dsh/profiles/desktop/node_modules/deepseek-web-import`；profile 名不同时用 `node tools/apply-dlc.mjs <包目录>` 或 `DSH_PLUGIN_DIR=<包目录>` 指定。
 
 ### C. 离线：本地 tgz
 
 适合内网或给别人试用，代价是放弃市场更新。
 
 ```sh
-npm pack && dsh plugin add file:/absolute/path/deepseek-web-import-*.tgz
+cd deepseek-web-import-f
+npm pack
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.10.tgz
 ```
 
-市场更新会还原上游文件，补丁层随之消失；重新执行一次 `node tools/apply-dlc.mjs` 即可恢复，脚本会按阶段跳过已应用的部分，锚点对不上时会直接报错而不是留下半成品。
+包内包含 `lib/`、`docs/`、`tools/` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
 
-> 宿主半部的改动需要重启 DSH 或 toggle 一次插件；纯客户端改动（刷新、批量）刷新页面即可。
+市场会更新基线，但**补丁层会随更新消失**：更新后重跑 `node tools/apply-dlc.mjs`；如果脚本报锚点不匹配，说明上游改了被 patch 的文件，需要先 rebase 本仓库，而不是继续重试。
+
+> 宿主半部的改动需要重启 DSH，或在「设置 → 插件」里把对应条目关闭再启用；纯客户端改动（刷新、批量）刷新页面即可。
+
+## 卸载与回滚
+
+- **回到上游**：重新执行 `dsh plugin add <上游归档 URL>`，同名替换，补丁层随之消失。
+- **只回滚客户端**（保留图片、附件与正文清洗）：
+
+  ```bash
+  git -C deepseek-web-import-f show upstream/main:lib/client.js \
+    > ~/.dsh/profiles/desktop/node_modules/deepseek-web-import/lib/client.js
+  ```
+
+  Windows 的 cmd 不展开 `~`，profile 目录通常写作 `%USERPROFILE%\.dsh\profiles\desktop`；profile 名不是 `desktop` 时请替换。
+- **从市场移除**：设置 → 插件 → 找到 `deepseek-web-import` 移除。
 
 ## 兼容性与限制
 
-- 基线：上游 `0.2.0`，写入 DSH 会话格式 v4。
+- **DSH 0.2.x**（实测 `0.2.1-rc.2`），写入会话格式 v4；补丁基线为上游 `0.2.0`（提交 `7727f18`）。
 - 文档字节被完整保留，但模型上下文里仍只有 DeepSeek 当时存下的文本——解析后的文档正文本来就不在历史负载里。
 - 带 `file` 块的历史在续聊时需要模型适配器接受该块，建议用一条文档对话验证一次。
 - 依赖 DeepSeek 非官方接口，`userToken` 过期后需要重新保存。

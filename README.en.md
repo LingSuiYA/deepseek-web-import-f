@@ -43,6 +43,30 @@ is opened once.
 None of that breaks importing. All of it decides whether the imported conversation is
 actually usable.
 
+## Quick start
+
+1. **Install the plugin** using one route from [Install and update](#install-and-update),
+   then restart DSH.
+2. **Open Settings → DeepSeek Chat Import**.
+3. **Paste a `userToken`**: sign in to chat.deepseek.com → `F12` → `Application` →
+   `Local Storage` → copy the `userToken` value → paste and save (the plugin extracts the
+   `value` field itself).
+4. **Load conversations → pick a workspace → Import as session**. The result line reports
+   the message count and `N images` / `N files`; the page refreshes automatically and the
+   new session appears in the sidebar.
+
+The full acceptance checklist and failure table live in
+[Install from zero](docs/INSTALL-FROM-ZERO.md).
+
+## Requirements
+
+- **DSH 0.2.x** (tested on `0.2.1-rc.2`), writing session format v4.
+- **Node.js ≥ 18** for the overlay script and packaging (routes B and C).
+- **git** for routes A and B; without `git` on the host's PATH, route A fails.
+- **GitHub access** for routes A and B.
+- **A DeepSeek web account** to obtain the `userToken`.
+- The plugin marketplace is optional and only affects update prompts.
+
 ## Features
 
 ### 1. Images and documents
@@ -81,8 +105,7 @@ For several imports in a row, the batch mode counts them instead and exposes a s
 - Error codes follow upstream (`no_token`, `api`, `too_large`, `persist`, …); new
   failures are scoped to the attachment that hit them.
 - Any image or document failure still lets the session be written.
-- The result carries `titleCached` (`written` / `ok` / `error` / `no_cache`) so the
-  title-cache outcome is visible.
+- Startup failures and untitled sessions are covered in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
 - If startup reports `deepseek-web-import: import failed`, use the boot dialog's
   "disable third-party plugins" to get DSH running, then roll back only the client file
   (command in [Install from zero](docs/INSTALL-FROM-ZERO.md)).
@@ -120,41 +143,69 @@ whether the plugin marketplace can keep the package updated.
 
 ### A. Install from the Git repository (one step)
 
-Installing straight from this repository lets the marketplace track it and keep the install current.
+Installing straight from this repository lets the marketplace track it.
 
 ```sh
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
-### B. Today: marketplace-managed base + local overlay
+The repository must be reachable; when the host's PATH has no `git`, the command fails
+with `git ls-remote failed`, so use route B instead.
 
-The marketplace keeps managing the upstream version; this supplement is a patch applied
-on top, re-applied after each upstream update.
+### B. Marketplace-managed base + local overlay
+
+The marketplace manages the upstream base; this supplement is a patch applied on top.
+The base is pinned to upstream `0.2.0`, commit `7727f18`, so the patch anchors stay stable.
 
 ```sh
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
-git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
-node deepseek-web-import-f/tools/apply-dlc.mjs
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
+git clone https://github.com/LingSuiYA/deepseek-web-import-f.git
+cd deepseek-web-import-f
+node tools/apply-dlc.mjs
 ```
+
+The default target is `~/.dsh/profiles/desktop/node_modules/deepseek-web-import`; when
+the profile has another name, pass the package directory or set `DSH_PLUGIN_DIR`.
 
 ### C. Offline: a local tarball
 
 For an intranet machine or a quick trial, at the cost of marketplace updates.
 
 ```sh
-npm pack && dsh plugin add file:/absolute/path/deepseek-web-import-*.tgz
+cd deepseek-web-import-f
+npm pack
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.10.tgz
 ```
 
-A marketplace update restores the upstream files, so the overlay disappears; run
-`node tools/apply-dlc.mjs` again. The script applies each stage only when missing and
-fails loudly when an anchor moved, instead of leaving a half-patched package.
+The tarball contains `lib/`, `docs/`, `tools/` and both READMEs. Windows shells do not
+expand `*`, so write the actual file name.
 
-> Host-half changes need a DSH restart or one plugin toggle; client-only changes (refresh,
-> batch mode) take effect on a page refresh.
+A marketplace update restores the upstream files, so the overlay disappears: run
+`node tools/apply-dlc.mjs` again. If it reports a moved anchor, upstream changed a patched
+file and this repository needs a rebase first — retrying will not help.
+
+> Host-half changes need a DSH restart, or disabling and re-enabling the entry under
+> Settings → Plugins; client-only changes (refresh, batch mode) take effect on a page refresh.
+
+## Uninstall and rollback
+
+- **Back to upstream**: run `dsh plugin add <upstream archive URL>`; the same package name
+  is replaced and the overlay goes with it.
+- **Roll back only the client half** (keeping images, documents and text cleanup):
+
+  ```bash
+  git -C deepseek-web-import-f show upstream/main:lib/client.js \
+    > ~/.dsh/profiles/desktop/node_modules/deepseek-web-import/lib/client.js
+  ```
+
+  Windows cmd does not expand `~`; the profile lives at `%USERPROFILE%\.dsh\profiles\desktop`
+  unless it has another name.
+- **Remove from the marketplace**: Settings → Plugins → find `deepseek-web-import` → remove.
 
 ## Compatibility and limits
 
-- Base: upstream `0.2.0`, writing DSH session format v4.
+- **DSH 0.2.x** (tested on `0.2.1-rc.2`), writing session format v4; the overlay targets
+  upstream `0.2.0`, commit `7727f18`.
 - Document bytes are restored, but the model context still carries only the text
   DeepSeek stored for that turn — the parsed document text was never in the history payload.
 - Replaying an imported turn with a `file` block depends on the target model adapter

@@ -12,6 +12,14 @@
 
 > 三条路最终都是 `deepseek-web-import` 一个包，**同名同 Cordis row，装一个会替换另一个**。
 
+## 前置条件
+
+- DSH 0.2.x（实测 `0.2.1-rc.2`），会话格式 v4
+- Node.js ≥ 18：路线 B/C 跑补丁脚本与打包
+- git：路线 A/B 需要；宿主 PATH 无 `git` 时路线 A 会失败
+- 能访问 GitHub：路线 A/B 依赖
+- 一个 DeepSeek 网页账号：获取 `userToken`
+
 ---
 
 ## A. 从 Git 仓库安装
@@ -20,6 +28,7 @@
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
+- 需要能访问本仓库；无权限时会直接报鉴权失败。
 - 如果宿主进程的 PATH 里没有 `git`，`dsh plugin add` 的 `github:` 解析会失败；改用路线 B 的归档 URL。
 - 装完**重启 DSH**，设置 → DeepSeek 对话导入。
 - 之后市场会对比「锁定 commit」与仓库 HEAD，推送即提示更新。
@@ -28,22 +37,22 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 ## B. 市场基线 + 补丁层
 
-### 1. 装上游基线（与市场同源）
+### 1. 装上游基线（钉在 0.2.0）
 
 ```sh
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
 ```
 
-也可以在插件市场里直接装上游。**不要**用 `file:` 装本仓库的 tgz——那会让市场失去更新能力。
+固定提交而不是 `main`，这样补丁锚点不会因为上游推送而漂移。**不要**用 `file:` 装本仓库的 tgz——那会让市场失去更新能力。
 
 ### 2. 取本仓库（补丁层与脚本都在里面）
 
 ```sh
-git clone git@github.com:LingSuiYA/deepseek-web-import-f.git
+git clone https://github.com/LingSuiYA/deepseek-web-import-f.git
 cd deepseek-web-import-f
 ```
 
-如果仓库不可匿名访问，需要先配好 SSH 密钥（或改用 HTTPS + Personal Access Token）。
+如果仓库不可匿名访问，需要 Personal Access Token（或配好 SSH 密钥后改用 `git@github.com:` 地址）。
 
 ### 3. 贴补丁
 
@@ -69,9 +78,9 @@ DSH_PLUGIN_DIR=/path/to/pkg node tools/apply-dlc.mjs
 | 5 | 批量导入 + 客户端预热 |
 | 6 | 宿主端投影缓存 checkpoint（标题立即显示） |
 
-### 4. 重启或 toggle 插件
+### 4. 重启或重新加载插件
 
-宿主半部的改动需要重新加载：重启 DSH，或在插件管理里关一次再开。纯客户端改动（stage 4/5）刷新页面即可。
+宿主半部的改动需要重新加载：重启 DSH，或在「设置 → 插件」里把 `deepseek-web-import` 关闭再启用。纯客户端改动（stage 4/5）刷新页面即可。
 
 ### 5. 之后每次市场更新
 
@@ -80,6 +89,8 @@ DSH_PLUGIN_DIR=/path/to/pkg node tools/apply-dlc.mjs
 ```sh
 node tools/apply-dlc.mjs
 ```
+
+如果脚本报「anchor 不匹配」，说明上游改了被 patch 的文件，需要先 rebase 本仓库，而不是继续重试。
 
 ---
 
@@ -99,6 +110,7 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
 ```
 
 - 这条路线**没有市场更新**：市场只更新能重新解析的来源（`npm:` / `github:` / 固定归档 URL）。
+- 包内包含 `lib/`、`docs/`、`tools/` 和两个 README；Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
 - 升级时重复「打包 → 卸载旧的 → 装新的」。
 
 ---
@@ -133,10 +145,12 @@ git -C deepseek-web-import-f show upstream/main:lib/client.js \
   > ~/.dsh/profiles/desktop/node_modules/deepseek-web-import/lib/client.js
 ```
 
+Windows 的 cmd 不展开 `~`，profile 目录通常写作 `%USERPROFILE%\.dsh\profiles\desktop`；profile 名不是 `desktop` 时请替换。
+
 ### 完全回滚到上游
 
 ```bash
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
 ```
 
 同名替换，补丁层随之消失。

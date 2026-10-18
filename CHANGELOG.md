@@ -1,5 +1,20 @@
 # Changelog
 
+> `0.2.0-dlc.*` 是本仓库的版本；其下的 `0.2.0` 及更早条目来自上游，保留用于追溯基线。
+
+## 0.2.0-dlc.10 (2026-10-18)
+
+### 文档
+
+- 新增「快速开始」与「前置条件」：安装、打开设置、获取 `userToken`、导入四步；列出 DSH 0.2.x、Node ≥ 18、git、GitHub 访问与 DeepSeek 账号。
+- 安装路线 A 补充「需要能访问仓库」与「PATH 无 git 时改用 B」。
+- 路线 B 的基线钉到上游 `0.2.0` 提交 `7727f18` 的归档 URL，并改用 HTTPS clone、补 `cd`，修复照抄命令找不到脚本的问题。
+- 路线 C 写明实际 tgz 文件名，并说明包内现在包含 `docs/` 与 `tools/`（`package.json` 的 `files` 同步）。
+- 新增「卸载与回滚」小节（回到上游 / 只回滚客户端 / 从市场移除），并补充 Windows 路径写法。
+- `titleCached` 等排查细节移入 `docs/TROUBLESHOOTING.md`，README 只保留入口。
+- 兼容性改为「DSH 0.2.x（实测 0.2.1-rc.2）」，并注明补丁基线提交。
+- 继承自上游的 `COMPATIBILITY.md` / `TROUBLESHOOTING.md` 增加来源说明；CHANGELOG 增加版本归属说明。
+
 ## 0.2.0-dlc.9 (2026-10-18)
 
 ### 文档
