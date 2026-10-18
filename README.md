@@ -15,9 +15,11 @@ This page documents only the overlay.
 
 - An imported human turn keeps its pictures: each image is downloaded, stored as a
   DSH attachment, and rendered inline after the prompt text.
-- The result line reports how many were kept (`N images`), or `0/N` when pictures
-  were found but none could be stored.
-- A picture that fails to download or decode is skipped; the text import still succeeds.
+- It also keeps **documents** (PDF, Word, text, …) as file attachments, with their
+  original names and bytes.
+- The result line reports how many were kept (`N images`, `N files`), or `0/N` when
+  items were found but none could be stored.
+- An attachment that fails to download or decode is skipped; the text import still succeeds.
 
 ## How it works
 
@@ -34,20 +36,30 @@ steps run before the session is written:
 
 1. `GET /api/v0/file/fetch_files?file_ids=…` refreshes the descriptors — the
    `signed_path` carried by history can be stale;
-2. `GET https://files.deepseeksvc.com/api<path>?ty=p` through the same
-   `subprocess` transport as every other request (`ty` is mandatory; `&fmt=jpeg`
-   transcodes, omitting it may yield WebP; 12 MB cap per image);
-3. sniff the raster type from magic bytes, commit through the DSH `attachments`
-   service, and reference the result as `{ "type": "image", "attachment": … }`
-   after the prompt text.
+2. download from `https://files.deepseeksvc.com/api<path>` through the same
+   `subprocess` transport as every other request; the rendition depends on the
+   entry:
+   - images use `?ty=p` (`&fmt=jpeg` transcodes, omitting it may yield WebP);
+   - documents use `?ty=r`, the original bytes;
+3. persist through the DSH `attachments` service and reference the result as
+   `{ "type": "image" | "file", "attachment": … }` after the prompt text.
+
+**No artificial size cap.** The web client allows **100 MB per file** by default
+(`0x6400000`) and up to 50 files, and a model can raise that through its
+`file_feature.max_upload_file_size`; a smaller importer limit would drop files the
+user could upload in the browser. The only bound here is a 1 GiB runaway guard.
+Documents stream to a temporary file and then into `attachments.saveFileStream`
+(no base64, no whole-file buffer), so a file at the web limit costs disk I/O
+rather than heap.
 
 | Piece | Role |
 |---|---|
-| `lib/images.js` | discovery, download, sniffing (new file) |
-| `lib/events.js` | `messageBlocks(message, role, images)` and `buildSessionEvents(…, imagesByMessage)` |
-| `lib/index.js` | runs the image pass before writing, reports the counts |
-| `lib/client.js` | localized image count in the result line |
-| `test/images.test.mjs` | 9 cases: parsing, URL construction, event assembly, download/save pipeline |
+| `lib/images.js` | image discovery, download, sniffing (new file) |
+| `lib/files.js` | document discovery, streamed download, save (new file) |
+| `lib/events.js` | `messageBlocks(message, role, images, files)` and `buildSessionEvents(…, imagesByMessage, filesByMessage)` |
+| `lib/index.js` | runs both passes before writing, reports the counts |
+| `lib/client.js` | localized image/file counts in the result line |
+| `test/images.test.mjs`, `test/files.test.mjs` | 18 cases: parsing, URLs, event assembly, download/save pipeline, size guard |
 
 ## Install and update
 
@@ -90,8 +102,13 @@ stay small and self-contained so a rebase is a replay, not a merge.
 ## Compatibility
 
 - Base: upstream `0.2.0`, writing DSH session format v4.
-- `lib/images.js` is additive; the three patched files are anchor-checked.
-- Non-image attachments (PDF, Word) remain text-only, as upstream.
+- `lib/images.js` and `lib/files.js` are additive; the three patched files are
+  anchor-checked.
+- Document bytes are restored, but the model context still carries only the text
+  DeepSeek stored for that turn — the parsed document text was never part of the
+  history payload.
+- Replaying an imported turn that carries a file depends on the target model
+  adapter accepting `file` blocks; verify once with a document conversation.
 
 ## License
 

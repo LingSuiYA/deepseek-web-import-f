@@ -12,8 +12,9 @@
 ## 本层新增
 
 - 导入后的人话轮保留图片：下载 → 存为 DSH 附件 → 在提问文本之后内联显示。
-- 结果行报告保留数量（`含图片 N 张`）；找到但一张都没存下时显示 `0/N`。
-- 单张图片下载或解码失败只跳过该图，文本导入照常完成。
+- 同时保留**文档附件**（PDF / Word / 文本等），原名原字节。
+- 结果行报告保留数量（`含图片 N 张`、`含附件 N 个`）；找到但一个都没存下时显示 `0/N`。
+- 单个附件下载或解码失败只跳过它，文本导入照常完成。
 
 ## 实现
 
@@ -28,18 +29,27 @@ DeepSeek 把上传物挂在用户消息的 `FILE` fragment 上：
 字节不在 `history_messages` 里，而在带签名的 CDN 路径后面。写会话前多做三步：
 
 1. `GET /api/v0/file/fetch_files?file_ids=…` 刷新描述（历史里的 `signed_path` 可能过期）；
-2. 从 `https://files.deepseeksvc.com/api<path>?ty=p` 下载，走与其他请求相同的
-   `subprocess` 通道（`ty` 必填；`&fmt=jpeg` 转码，省略可能得到 WebP；单张上限 12 MB）；
-3. 用魔数识别真实格式，交给 DSH `attachments` 服务落盘，并在提问文本之后写入
-   `{ "type": "image", "attachment": … }`。
+2. 从 `https://files.deepseeksvc.com/api<path>` 下载，走与其他请求相同的
+   `subprocess` 通道，按条目类型选版本：图片 `?ty=p`（`&fmt=jpeg` 转码，省略可能是 WebP）；
+   文档 `?ty=r`（原件）；
+3. 交给 DSH `attachments` 服务落盘，并在提问文本之后写入
+   `{ "type": "image" | "file", "attachment": … }`。
+
+**不设人为大小上限。** 网页端默认允许**单个 100 MB**（`0x6400000`）、最多 50 个，
+且模型可通过 `file_feature.max_upload_file_size` 放宽；如果这里卡一个更小的值，
+就会丢掉用户在浏览器里明明能上传的文件。这里唯一的边界是 1 GiB 的失控保护。
+文档采用**流式**处理：子进程直接写入临时文件，宿主再交给
+`attachments.saveFileStream`，不走 base64、不整文件进内存，所以 100 MB 的文件
+消耗的是磁盘 I/O 而不是几倍堆内存。
 
 | 文件 | 作用 |
 |---|---|
-| `lib/images.js` | 发现、下载、嗅探（新增文件） |
-| `lib/events.js` | `messageBlocks(message, role, images)`、`buildSessionEvents(…, imagesByMessage)` |
-| `lib/index.js` | 写会话前跑图片流程，返回 `imageFiles` / `imageCount` |
-| `lib/client.js` | 结果行显示图片数量（中英双语） |
-| `test/images.test.mjs` | 9 项用例：解析、URL、事件拼装、下载/保存流水线 |
+| `lib/images.js` | 图片发现、下载、嗅探（新增文件） |
+| `lib/files.js` | 文档发现、流式下载、保存（新增文件） |
+| `lib/events.js` | `messageBlocks(message, role, images, files)`、`buildSessionEvents(…, imagesByMessage, filesByMessage)` |
+| `lib/index.js` | 写会话前跑两趟流程，返回 `imageFiles`/`imageCount`、`fileFiles`/`fileCount` |
+| `lib/client.js` | 结果行显示图片/附件数量（中英双语） |
+| `test/images.test.mjs`、`test/files.test.mjs` | 共 18 项：解析、URL、事件拼装、下载/保存流水线、大小保护 |
 
 ## 安装与更新
 
@@ -78,8 +88,10 @@ rebase 才是「重放」而不是「合并」。
 ## 兼容性
 
 - 基线：上游 `0.2.0`，写 DSH 会话格式 v4。
-- `lib/images.js` 是纯新增；被改的三个文件由 `apply-dlc` 做锚点校验。
-- PDF / Word 等非图片附件仍只导入文本，与上游一致。
+- `lib/images.js`、`lib/files.js` 是纯新增；被改的三个文件由 `apply-dlc` 做锚点校验。
+- 文档字节被完整恢复，但模型上下文里仍只有 DeepSeek 当时存下的文本——解析后的文档正文
+  本来就不在历史负载里。
+- 带 `file` 块的历史在续聊时需要目标模型适配器接受该块，建议用一条文档对话验证一次。
 
 ## 许可证
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0-dlc.2 (2026-10-18)
+
+### 新增
+
+- **文档附件导入**：`FILE` fragment 中 `is_image: false` 的条目（PDF / Word / 文本等）
+  按 `?ty=r` 取原件，流式写入临时文件后交给 `attachments.saveFileStream`
+  （无该接口时退回 `saveFile`），事件中写入 `{ type: 'file', attachment }`。
+- **不设人为大小上限**：网页端默认单文件 100 MB（`0x6400000`）、最多 50 个，模型还可用
+  `file_feature.max_upload_file_size` 放宽；导入侧只保留 1 GiB 失控保护，且优先按
+  `file_size` 判断，避免把浏览器允许的文件拦掉。
+- 文件名按 `sanitizeFileName` 清洗（去路径分隔符与控制字符、限长 180）。
+- 结果行新增「含附件 N 个」/ `0/N`。
+- `test/files.test.mjs`：9 项（URL、组包、流式保存、回退路径、大小保护、服务缺失）。
+- `tools/apply-dlc.mjs` 改为两阶段（图片 → 文档），已贴过 stage 1 的安装可增量升级。
+
+### 说明
+
+- 文档字节恢复的是原件；模型上下文仍只有 DeepSeek 当时存下的文本（解析正文不在历史负载里）。
+- 带 `file` 块的历史在续聊时依赖模型适配器接受该块，需用一条文档对话验证一次。
+
 ## 0.2.0-dlc.1 (2026-10-18)
 
 **DLC 补丁层**：基于上游 `0.2.0`，只新增「图片附件导入」这一项能力。
