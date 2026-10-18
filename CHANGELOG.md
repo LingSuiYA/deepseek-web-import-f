@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-dlc.5 (2026-10-18)
+
+### 新增
+
+- **批量导入模式**：勾选后导入不逐条刷新，累计计数并显示「完成导入并刷新（N 条）」按钮，
+  点一次统一刷新。偏好存 `localStorage`（`dswi.batchMode`）。
+- **导入即显示真实标题**：侧边栏标题来自投影缓存（`storages/session_projcache` 的 `rows.title`），
+  新导入的会话没有缓存条目，所以要点开一次才有标题。现在导入成功后调用
+  `sessions.refreshProjections(sessionId)` 预热，刷新后直接显示 DeepSeek 原标题。
+- `tools/apply-dlc.mjs` 增加 stage 5（纯客户端改动）。
+
 ## 0.2.0-dlc.4 (2026-10-18)
 
 ### 新增

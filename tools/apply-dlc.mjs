@@ -358,5 +358,101 @@ if (!read(clientPath).includes('autoRefresh')) {
   console.log('stage 4 applied: optional refresh-after-import')
 }
 
+/* ---------------------------------------------------------------- stage 5 */
+if (!read(clientPath).includes('warmProjections')) {
+  replaceOnce(clientPath,
+    `      const t = props.t;`,
+    `      const t = props.t;
+      const ctx = props.ctx;`)
+
+  replaceOnce(clientPath,
+    `      '.dswi-check{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;color:var(--color-text-secondary,#666);cursor:pointer}',`,
+    `      '.dswi-check{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;color:var(--color-text-secondary,#666);cursor:pointer}',
+      '.dswi-refresh{margin-left:10px;border-color:#1e8e3e;color:#1e8e3e;font-weight:600}',`)
+
+  replaceOnce(clientPath,
+    `      autoRefresh: ['导入后自动刷新页面（侧边栏立即出现）', 'Refresh the page after import (the new session appears immediately)'],`,
+    `      autoRefresh: ['导入后自动刷新页面（侧边栏立即出现）', 'Refresh the page after import (the new session appears immediately)'],
+      batchMode: ['批量导入（最后统一刷新）', 'Batch import (refresh once at the end)'],
+      refreshNow: ['完成导入并刷新（{count} 条）', 'Finish and refresh ({count} imported)'],`)
+
+  replaceOnce(clientPath,
+`      function toggleAutoRefresh(next) {
+        setAutoRefresh(next);
+        try { window.localStorage.setItem('dswi.autoRefresh', next ? '1' : '0'); } catch (e) { /* private mode */ }
+      }`,
+`      /* Batch mode: import several conversations, then refresh once at the end. */
+      const [batchMode, setBatchMode] = React.useState(function () {
+        try { return window.localStorage.getItem('dswi.batchMode') === '1'; } catch (e) { return false; }
+      });
+      const [pendingRefresh, setPendingRefresh] = React.useState(0);
+      function toggleAutoRefresh(next) {
+        setAutoRefresh(next);
+        try { window.localStorage.setItem('dswi.autoRefresh', next ? '1' : '0'); } catch (e) { /* private mode */ }
+      }
+      function toggleBatchMode(next) {
+        setBatchMode(next);
+        try { window.localStorage.setItem('dswi.batchMode', next ? '1' : '0'); } catch (e) { /* private mode */ }
+      }
+
+      /* A freshly imported session has a log but no projection-cache entry, so
+         the sidebar shows the untitled placeholder until the session is opened
+         once. Ask the sessions service to compute (and cache) its projections
+         right away, so a reload shows the stored title. Best effort: an older
+         host without this method still imports normally. */
+      async function warmProjections(sessionId) {
+        try {
+          const sessions = ctx && typeof ctx.get === 'function' ? ctx.get('sessions') : undefined;
+          if (sessions && typeof sessions.refreshProjections === 'function') {
+            await sessions.refreshProjections(sessionId);
+          }
+        } catch (e) { /* projection warm-up must never fail an import */ }
+      }`)
+
+  replaceOnce(clientPath,
+`        /* Give the result line a beat to render, then reload so the sidebar
+           stream re-subscribes and shows the imported session. */
+        if (r && r.ok === true && autoRefresh && r.attached !== false) {
+          window.setTimeout(function () { window.location.reload(); }, 1200);
+        }`,
+`        if (r && r.ok === true) {
+          /* Warm the projection cache first: it is what carries the stored
+             title into the sidebar, so the reload below shows the real name. */
+          await warmProjections(r.sessionId);
+          if (r.attached !== false) {
+            if (batchMode) setPendingRefresh(function (n) { return n + 1; });
+            else if (autoRefresh) window.setTimeout(function () { window.location.reload(); }, 1200);
+          }
+        }`)
+
+  replaceOnce(clientPath,
+`            t('autoRefresh')
+          ),
+          error ? React.createElement('p', { className: 'dswi-err' }, error) : null,`,
+`            t('autoRefresh')
+          ),
+          React.createElement('label', { className: 'dswi-check' },
+            React.createElement('input', {
+              type: 'checkbox',
+              checked: batchMode,
+              onChange: function (e) { toggleBatchMode(e.target.checked); },
+            }),
+            t('batchMode')
+          ),
+          pendingRefresh > 0
+            ? React.createElement('button', {
+              className: 'dswi-refresh',
+              onClick: function () { window.location.reload(); },
+            }, t('refreshNow', { count: pendingRefresh }))
+            : null,
+          error ? React.createElement('p', { className: 'dswi-err' }, error) : null,`)
+
+  replaceOnce(clientPath,
+    `}, (props) => React.createElement(App, Object.assign({}, props, { t: translate }))));`,
+    `}, (props) => React.createElement(App, Object.assign({}, props, { t: translate, ctx: ctx }))));`)
+
+  console.log('stage 5 applied: batch refresh + projection warm-up for titles')
+}
+
 console.log('overlay is up to date')
 console.log('restart DSH (or toggle the plugin) to load the patched host half.')

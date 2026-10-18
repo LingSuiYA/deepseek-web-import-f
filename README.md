@@ -23,8 +23,11 @@ This page documents only the overlay.
 - The result line reports how many were kept (`N images`, `N files`), or `0/N` when
   items were found but none could be stored.
 - After a successful import the page refreshes once so the new session appears in
-  the sidebar without a manual reload; the checkbox next to "Load conversations"
-  turns this off for batch imports.
+  the sidebar without a manual reload. Batch mode defers that to one
+  "Finish and refresh" button when importing several conversations.
+- The stored title is written into the projection cache at import time, so the
+  sidebar shows the real conversation name immediately instead of "untitled"
+  until the session is opened once.
 - An attachment that fails to download or decode is skipped; the text import still succeeds.
 
 ## How it works
