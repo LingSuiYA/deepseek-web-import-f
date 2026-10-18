@@ -2,6 +2,14 @@
 
 > `0.2.0-dlc.*` 是本仓库的版本；其下的 `0.2.0` 及更早条目来自上游，保留用于追溯基线。
 
+## 0.2.0-dlc.14 (2026-10-18)
+
+### 发布修正
+
+- LICENSE 恢复为标准 MIT 原文（仅保留上游版权行），修改声明移到 `NOTICE`。
+  此前把修改版权行插进 LICENSE，导致 GitHub 识别为 `other / NOASSERTION`，仓库页不显示 MIT。
+- `package.json` 的 `files` 增加 `NOTICE`，README 双语 License 段链接到它。
+
 ## 0.2.0-dlc.13 (2026-10-18)
 
 ### 描述一致性（公开前复查）

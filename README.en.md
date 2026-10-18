@@ -185,8 +185,8 @@ For an intranet machine or a quick trial, at the cost of marketplace updates.
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.13.tgz
-# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.13.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.14.tgz
+# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.14.tgz
 ```
 
 The tarball contains `lib/`, `docs/`, `tools/`, `cordis.patch.yml` and both READMEs.
@@ -241,4 +241,4 @@ anchor, upstream changed a patched file and this repository needs a rebase first
 
 ## License
 
-[MIT](LICENSE), inherited from upstream.
+[MIT](LICENSE), inherited from upstream; modification notice in [NOTICE](NOTICE).

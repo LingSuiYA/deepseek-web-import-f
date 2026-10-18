@@ -144,8 +144,8 @@ $env:DSH_PLUGIN_DIR = "C:\path\to\pkg"; node tools/apply-dlc.mjs
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.13.tgz
-# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.13.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.14.tgz
+# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.14.tgz
 ```
 
 包内包含 `lib/`、`docs/`、`tools/`、`cordis.patch.yml` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
@@ -186,4 +186,4 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.13.tgz
 
 ## License
 
-[MIT](LICENSE)，继承自上游。
+[MIT](LICENSE)，继承自上游；修改声明见 [NOTICE](NOTICE)。
