@@ -83,8 +83,15 @@ small and self-contained so a rebase stays a replay rather than a merge.
 The plugin declares `dsh.bundle` (see `package.json`), so it installs with `dsh plugin add`:
 
 ```sh
+# upstream (text import only)
 dsh plugin add wpc0323/deepseek-web-import
+
+# this DLC build (adds image import; private repository, so authenticate first)
+dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
+
+> Both packages are named `deepseek-web-import` and own the same Cordis row, so
+> installing one replaces the other. Pick exactly one.
 
 > After installing, **restart DSH**; **Settings → DeepSeek Chat Import** then appears. In this repository `lib/index.js` is the host half (same-origin JSON routes) and `lib/client.js` is the web client half (the settings-page UI); they talk over the `webServer` routes and `fetch`.
 

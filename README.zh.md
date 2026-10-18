@@ -77,8 +77,14 @@ npm test
 插件声明了 `dsh.bundle`（见 `package.json`），可通过 `dsh plugin add` 安装：
 
 ```sh
+# 上游版（仅文本导入）
 dsh plugin add wpc0323/deepseek-web-import
+
+# 本 DLC（增加图片导入；私有仓库，需先完成 GitHub 认证）
+dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
+
+> 两个包同名 `deepseek-web-import`、占用同一个 Cordis row，装一个会替换另一个，二选一。
 
 > 说明：安装后**重启 DSH**，设置 → 左侧会出现 **「DeepSeek 对话导入」** 页面。仓库中的 `lib/index.js` 是 host 半部（提供同源 JSON 路由），`lib/client.js` 是 web client 半部（设置页 UI）；二者通过 `webServer` 路由 + `fetch` 通信。
 
