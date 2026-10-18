@@ -74,19 +74,42 @@ npm test
 
 ## 安装
 
-插件声明了 `dsh.bundle`（见 `package.json`），可通过 `dsh plugin add` 安装：
+插件声明了 `dsh.bundle`（见 `package.json`），可通过 `dsh plugin add` 安装。
+
+### 市场托管基线 + 本补丁层（当前方式）
+
+插件市场只会更新它能重新解析的来源：`npm:` 包、`github:` 仓库，或固定归档 URL。
+**用 `file:` 装的本地 tgz 市场看不见，永远不会更新。** 所以正确结构是：让市场托管上游基线，
+再把本补丁层贴上去。
 
 ```sh
-# 上游版（仅文本导入）
-dsh plugin add wpc0323/deepseek-web-import
+# 1) 基线：与市场同源的归档 URL
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
 
-# 本 DLC（增加图片导入；私有仓库，需先完成 GitHub 认证）
+# 2) 补丁层：复制 lib/images.js，并改写 events.js / index.js / client.js
+node tools/apply-dlc.mjs
+```
+
+`tools/apply-dlc.mjs` 默认作用于
+`~/.dsh/profiles/desktop/node_modules/deepseek-web-import`，可传目录或用
+`DSH_PLUGIN_DIR` 覆盖。脚本可重复执行、写入时换新 inode（不会破坏 pnpm 指向 store 的硬链接）；
+**锚点对不上会直接报错**——这就是「上游改了，补丁层需要 rebase」的信号。
+
+> **市场每次更新基线后，重新执行一次 `node tools/apply-dlc.mjs`。** 更新会还原上游原始文件，
+> 补丁层随之消失；脚本一步贴回。
+
+### 一步到位的替代方式（仓库公开后）
+
+两个包同名 `deepseek-web-import`、占用同一个 Cordis row，装一个会替换另一个：
+
+```sh
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
-> 两个包同名 `deepseek-web-import`、占用同一个 Cordis row，装一个会替换另一个，二选一。
+这样装的是完整补丁构建，但**私有仓库市场无法重新解析**，公开前拿不到市场更新。
 
-> 说明：安装后**重启 DSH**，设置 → 左侧会出现 **「DeepSeek 对话导入」** 页面。仓库中的 `lib/index.js` 是 host 半部（提供同源 JSON 路由），`lib/client.js` 是 web client 半部（设置页 UI）；二者通过 `webServer` 路由 + `fetch` 通信。
+> 首次安装后**重启 DSH**，设置 → 左侧出现 **「DeepSeek 对话导入」** 页面。
+> `lib/index.js` 是 host 半部（同源 JSON 路由），`lib/client.js` 是 web client 半部（设置页 UI）。
 
 ---
 

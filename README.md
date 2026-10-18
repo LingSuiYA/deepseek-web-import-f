@@ -80,20 +80,51 @@ small and self-contained so a rebase stays a replay rather than a merge.
 
 ## Install
 
-The plugin declares `dsh.bundle` (see `package.json`), so it installs with `dsh plugin add`:
+The plugin declares `dsh.bundle` (see `package.json`), so it installs with `dsh plugin add`.
+
+### Market-managed base + this overlay (current)
+
+The marketplace only updates packages it can re-resolve — an `npm:` spec, a
+`github:` spec, or a fixed archive URL. A `file:` tarball install is invisible to
+it and will never update. So the supported layout is: **let the marketplace own
+the base package, and re-apply this overlay on top of it.**
 
 ```sh
-# upstream (text import only)
-dsh plugin add wpc0323/deepseek-web-import
+# 1) base: the upstream package, from the same archive URL the market uses
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/refs/heads/main.tar.gz
 
-# this DLC build (adds image import; private repository, so authenticate first)
+# 2) overlay: copy lib/images.js and patch events.js / index.js / client.js
+node tools/apply-dlc.mjs
+```
+
+`tools/apply-dlc.mjs` defaults to
+`~/.dsh/profiles/desktop/node_modules/deepseek-web-import`; pass a directory or
+set `DSH_PLUGIN_DIR` to override. It is idempotent, writes through a fresh inode
+(so pnpm's hard link into the store is never edited), and **fails loudly** if an
+anchor moved — that is the signal that upstream changed and the overlay needs a
+rebase.
+
+> **After every marketplace update of the base package, run
+> `node tools/apply-dlc.mjs` again.** The update restores pristine upstream
+> files, which removes the overlay; the script puts it back in one step.
+
+### Single-step alternative (once this repository is public)
+
+Both packages are named `deepseek-web-import` and own the same Cordis row, so
+installing one replaces the other:
+
+```sh
 dsh plugin add LingSuiYA/deepseek-web-import-f
 ```
 
-> Both packages are named `deepseek-web-import` and own the same Cordis row, so
-> installing one replaces the other. Pick exactly one.
+This installs the whole overlay build, but a **private** repository cannot be
+re-resolved by the marketplace, so it would not receive updates until it is
+public.
 
-> After installing, **restart DSH**; **Settings → DeepSeek Chat Import** then appears. In this repository `lib/index.js` is the host half (same-origin JSON routes) and `lib/client.js` is the web client half (the settings-page UI); they talk over the `webServer` routes and `fetch`.
+> After installing, **restart DSH** on first setup; **Settings → DeepSeek Chat
+> Import** then appears. `lib/index.js` is the host half (same-origin JSON
+> routes) and `lib/client.js` is the web client half (the settings-page UI); they
+> talk over the `webServer` routes and `fetch`.
 
 ---
 

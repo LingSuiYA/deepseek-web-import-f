@@ -20,6 +20,9 @@
 - 设置页结果新增「含图片 N 张」，全部失败时显示 `0/N`。
 - 新增 `lib/images.js` 与 `test/images.test.mjs`（字段兼容、MIME 嗅探、URL 构造、
   事件拼装、下载/保存桩）。
+- 新增 `tools/apply-dlc.mjs`：把补丁层贴到**市场托管的上游包**上（默认
+  `~/.dsh/profiles/desktop/node_modules/deepseek-web-import`）。可重复执行、
+  写入换新 inode（不破坏 pnpm 硬链接）、锚点不匹配即报错。市场更新基线后重跑一次即可恢复图片导入。
 
 ### 验证
 
