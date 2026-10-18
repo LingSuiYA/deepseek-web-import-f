@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-dlc.6 (2026-10-18)
+
+### 修复
+
+- **标题预热改为宿主端落盘**：`coldSnapshot` 只是尽力折叠，实际不会可靠写入缓存行。
+  现在导入后额外用 `sessions.prepare()` 从已存日志构造临时会话（不进入 live store），
+  再调用 `sessionProjectionCache.write(session)` 做一次耐久 checkpoint，并在导入结果里
+  返回 `titleCached`（`written` / `ok` / `error` / `no_cache`）便于诊断。
+- `tools/apply-dlc.mjs` stage 6 同步为这一实现。
+
 ## 0.2.0-dlc.5 (2026-10-18)
 
 ### 新增
