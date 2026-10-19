@@ -519,5 +519,14 @@ if (!read(indexPath).includes('warmSessionProjections')) {
   console.log('stage 6 applied: host-side projection warm-up (titles without opening)')
 }
 
+/* ---------------------------------------------------------------- stage 7 */
+if (!read(clientPath).includes("['对话导入', 'Conversation Import']")) {
+  replaceOnce(clientPath,
+    `      nav: ['DeepSeek 对话导入', 'DeepSeek Chat Import'],`,
+    `      nav: ['对话导入', 'Conversation Import'],`)
+
+  console.log('stage 7 applied: settings label is "对话导入"')
+}
+
 console.log('overlay is up to date')
 console.log('restart DSH (or toggle the plugin) to load the patched host half.')

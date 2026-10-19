@@ -34,7 +34,7 @@
 ## 快速开始
 
 1. **装插件**：按[安装与更新](#安装与更新)选一条路线，装完重启 DSH。
-2. **打开设置 → DeepSeek 对话导入**。
+2. **打开设置 → 对话导入**。
 3. **粘贴 userToken**：浏览器登录 chat.deepseek.com → `F12` → `Application` → `Local Storage` → 复制 `userToken` 的值 → 粘贴并保存（插件会自动取出 `value` 字段）。
 4. **获取对话目录 → 选目标工作区 → 导入为会话**。结果行会显示消息数、`含图片 N 张` / `含附件 N 个`；默认自动刷新，侧边栏直接出现新会话。
 
@@ -144,8 +144,8 @@ $env:DSH_PLUGIN_DIR = "C:\path\to\pkg"; node tools/apply-dlc.mjs
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.14.tgz
-# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.14.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.15.tgz
+# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.15.tgz
 ```
 
 包内包含 `lib/`、`docs/`、`tools/`、`cordis.patch.yml` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。

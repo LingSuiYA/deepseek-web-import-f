@@ -48,7 +48,7 @@ actually usable.
 
 1. **Install the plugin** using one route from [Install and update](#install-and-update),
    then restart DSH.
-2. **Open Settings → DeepSeek Chat Import**.
+2. **Open Settings → Conversation Import**.
 3. **Paste a `userToken`**: sign in to chat.deepseek.com → `F12` → `Application` →
    `Local Storage` → copy the `userToken` value → paste and save (the plugin extracts the
    `value` field itself).
@@ -185,8 +185,8 @@ For an intranet machine or a quick trial, at the cost of marketplace updates.
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.14.tgz
-# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.14.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.15.tgz
+# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.15.tgz
 ```
 
 The tarball contains `lib/`, `docs/`, `tools/`, `cordis.patch.yml` and both READMEs.

@@ -32,7 +32,7 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 - 需要能访问本仓库；无权限时会直接报鉴权失败。
 - 如果宿主进程的 PATH 里没有 `git`，`dsh plugin add` 的 `github:` 解析会失败；改用路线 B 的归档 URL。
-- 装完**重启 DSH**，设置 → DeepSeek 对话导入。
+- 装完**重启 DSH**，设置 → 对话导入。
 - 之后市场会对比「锁定 commit」与仓库 HEAD，推送即提示更新。
 
 ---
@@ -120,7 +120,7 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
 
 ## 装完的验收清单
 
-1. **设置 → DeepSeek 对话导入** 页面出现
+1. **设置 → 对话导入** 页面出现
 2. 粘贴 `userToken` → 保存，状态变为「已配置」
 3. 「获取对话目录」能列出会话
 4. 导入一条**带图片**的对话：结果行出现「含图片 N 张」，会话里图片正常显示
