@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 24
       - name: Syntax check
-        run: for f in lib/*.js test/*.mjs; do node --check "$f"; done
+        run: for f in lib/*.js test/*.mjs tools/*.mjs; do node --check "$f"; done
       - name: Unit tests
         run: npm test
 
