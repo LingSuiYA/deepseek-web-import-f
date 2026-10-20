@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### 修复历史遗留会话（文档与工具，无运行时改动）
+
+- 新增 `tools/fix-surface-before-step.mjs`：修复 0.1.0 版本导入、在升级到 v3+ DSH 后打不开的会话。
+  这些日志写成 `turn/start → user/message → step/start`，而 DSH 的 v2→v3 迁移要求首个 `step/start` 之前
+  不能有 surface 事件。工具默认干跑（只报告），`--apply` 先备份再原地修复（只把开头的 surface 事件挪到
+  首个 `step/start` 之后、只交换该窗口内 `seq` 值，`seq0` 行原样保留），`--verify` 再用真实
+  `@deepseek-ai/dsh-session-persistence-jsonl` 逐个复开验证。0.2.x 导入的会话不受影响。
+- `docs/TROUBLESHOOTING.md` 新增该故障的现象、根因、影响范围与两条修复路径；中英 README 指向该节。
+- 新增 `test/repair-tool.test.mjs`（10 个用例）覆盖重排、`seq` 窗口交换、`seq0` 行不被改动、幂等与磁盘往返；
+  CI 的语法检查覆盖 `tools/*.mjs`。
+
 ## 0.2.1 (2026-10-20)
 
 ### 修复

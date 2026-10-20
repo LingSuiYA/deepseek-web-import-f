@@ -68,9 +68,17 @@ dsh plugin add wpc0323/deepseek-web-import
 
 ---
 
-## 会话日志损坏（corrupt session log）排查与修复
+## 会话打不开 / 日志损坏的排查与修复
 
-这是 **DSH 自身的恢复游标问题**（`session/end-seed` 由活动会话单独 append、重启后游标漏算导致 seq 复用），与本插件无关；插件的导入方式（整批写入）恰好避开了触发。现象、根因、修复方法见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)。
+见 [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)，其中记录了两种情况：
+
+- **`corrupt session log: seq gap …`**：DSH 自身的恢复游标问题（`session/end-seed` 由活动会话单独 append、重启后游标漏算导致 seq 复用），与本插件无关；插件的导入方式（整批写入）恰好避开了触发。
+- **`format v2 surface before first step …`**（旧版本导入的会话在升级 DSH 后打不开）：插件 0.1.0 写入的事件顺序是 `turn/start → user/message → step/start`，而 DSH 的 v2→v3 迁移要求首个 `step/start` 之前不能有 surface 事件。0.2.x 起已按正确顺序写入，**新导入不受影响**；已经写坏的旧日志可用仓库自带工具修复：
+
+  ```sh
+  node tools/fix-surface-before-step.mjs --root ~/.dsh/sessions          # 先干跑，看哪些要修
+  node tools/fix-surface-before-step.mjs --root ~/.dsh/sessions --apply  # 备份后原地修复
+  ```
 
 ---
 

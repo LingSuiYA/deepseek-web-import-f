@@ -69,9 +69,17 @@ dsh plugin add wpc0323/deepseek-web-import
 
 ---
 
-## Corrupt session log: diagnosis and repair
+## A session will not open, or the log looks corrupt
 
-That failure is a **DSH recovery-cursor bug of its own** (`session/end-seed` is appended separately by a live session, and the post-restart cursor misses it, so a `seq` gets reused); it is unrelated to this plugin, whose bulk write happens to avoid the trigger. Symptoms, root cause, and the repair are in [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (Chinese).
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) (Chinese). It covers two failures:
+
+- **`corrupt session log: seq gap …`** — a **DSH recovery-cursor bug of its own** (`session/end-seed` is appended separately by a live session, and the post-restart cursor misses it, so a `seq` gets reused); unrelated to this plugin, whose bulk write happens to avoid the trigger.
+- **`format v2 surface before first step …`** — a session imported by plugin **0.1.0** cannot be migrated by a v3+ DSH build, because that importer wrote `turn/start → user/message → step/start` while the v2→v3 migration requires no surface event before the first `step/start`. 0.2.x writes the correct order, so **new imports are unaffected**; an old artifact can be repaired with the bundled tool:
+
+  ```sh
+  node tools/fix-surface-before-step.mjs --root ~/.dsh/sessions          # dry run: what would change
+  node tools/fix-surface-before-step.mjs --root ~/.dsh/sessions --apply  # back up, then repair in place
+  ```
 
 ---
 
