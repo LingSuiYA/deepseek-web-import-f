@@ -33,6 +33,8 @@ Import your [chat.deepseek.com](https://chat.deepseek.com) **conversation histor
 
 ## Install
 
+**Prerequisite:** a `node` executable on PATH (Node.js). The plugin performs its request in a `node` child process (DSH's `web.fetch` cannot carry custom headers); without Node.js the page says it cannot start Node.js, and why, instead of failing to load the directory for no visible reason.
+
 The plugin declares `dsh.bundle` (see `package.json`), so it installs with `dsh plugin add`:
 
 ```sh

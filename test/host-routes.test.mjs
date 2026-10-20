@@ -61,8 +61,11 @@ function harness(options = {}) {
     async readFrom() { return { meta: { version: 4, id: 'session-x' }, events: calls.written ?? [] } },
   }
   /* One instance per service: routes registered by apply() must land in the
-     same table the test reads back from, and the spec must arrive on stdin. */
-  const subprocess = {
+     same table the test reads back from, and the spec must arrive on stdin.
+     `options.subprocess` replaces the whole seam (e.g. a host whose `node`
+     cannot be resolved). */
+  const subprocess = options.subprocess ?? {
+    async resolveExecutable() { return '/usr/bin/node' },
     spawn() {
       const result = transport()
       return {
@@ -226,6 +229,20 @@ test('a transport failure is reported as such, not as a malformed reply', async 
   /* the host no longer prefixes a sentence: `error` is the code the browser
      localizes and `msg` carries the redacted upstream reason */
   assert.match(result.json.msg, /ENOTFOUND/)
+})
+
+test('a host without Node.js is told so instead of "internal error"', async () => {
+  const { server } = harness({
+    subprocess: {
+      async resolveExecutable() { throw new Error('subprocess-local: command "node" was not found on PATH') },
+      spawn() { throw new Error('spawn must not be reached when resolution fails') },
+    },
+  })
+  const result = await post(server, '/__deepseek-web-import/listSessions', {})
+  assert.equal(result.json.ok, false)
+  /* issue #5: a missing prerequisite used to surface as an opaque 500 */
+  assert.equal(result.json.error, 'node_unavailable')
+  assert.match(result.json.msg, /not found on PATH/)
 })
 
 test('an upstream error never echoes the token back to the page', async () => {

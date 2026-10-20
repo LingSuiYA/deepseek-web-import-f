@@ -106,6 +106,7 @@ test('every failure code the host answers with has a localized message', async (
     persistence_unavailable: 'errPersistence',
     workspace_registry_unavailable: 'errWorkspaceRegistry',
     subprocess_unavailable: 'errSubprocess',
+    node_unavailable: 'errNodeMissing',
     too_large: 'errTooLarge',
     empty_history: 'errEmptyHistory',
     no_workspace: 'errNoWorkspace',

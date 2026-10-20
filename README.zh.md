@@ -32,6 +32,8 @@
 
 ## 安装
 
+**前置条件**：机器上需要有能在 PATH 中执行的 `node`（Node.js）。插件的网络请求放在一个 `node` 子进程里发送（DSH 的 `web.fetch` 带不了自定义 Header）；没有 Node.js 时设置页会直接提示「无法启动 Node.js」及原因，而不是让目录加载莫名失败。
+
 插件声明了 `dsh.bundle`（见 `package.json`），可通过 `dsh plugin add` 安装：
 
 ```sh
