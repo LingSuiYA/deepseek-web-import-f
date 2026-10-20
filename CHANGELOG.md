@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 (2026-10-20)
+
+### 修复
+
+- **缺少 Node.js 时不再报 `internal error`**（issue #5）：请求通过 `node` 子进程发送，机器上没有 Node.js 时子进程根本起不来，
+  而这条失败原先只能被路由报成 500 `internal error`。现在发请求前先用 `subprocess.resolveExecutable('node')` 解析可执行文件，
+  spawn 抛错、子进程因 `ENOENT` 直接退出也都归为同一类失败，统一返回稳定的 `node_unavailable`，并保留底层原因
+  （如 `command "node" was not found on PATH`）。
+- 设置页对该错误给出中英文明示：「无法启动 Node.js：本插件通过网络子进程（node）发送带 userToken 的请求，
+  请先安装 Node.js 并确保 `node` 在 PATH 中可执行，然后重启 DSH」，不再是没头没尾的失败。
+- README（中/英）在「安装」处补充前置条件：需要可用的 Node.js（PATH 可解析）。
+
 ## 0.2.0 (2026-10-14)
 
 ### 第二轮：i18n 与审阅修正

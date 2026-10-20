@@ -158,3 +158,59 @@ test('redact caps and hides the token', () => {
   assert.equal(redact('x'.repeat(20), null, 5), 'xxxxx…')
   assert.equal(redact(null), '')
 })
+
+/* ---- a host without Node.js must be told so, not "internal error" ---- */
+
+test('a missing node executable is reported as a prerequisite, not a failure', async () => {
+  /* the DSH subprocess seam resolves the child executable before spawning */
+  const resolving = {
+    async resolveExecutable() { throw new Error('subprocess-local: command "node" was not found on PATH') },
+    spawn() { throw new Error('spawn must not be reached when resolution fails') },
+  }
+  const resolved = await runRequest(resolving, { url: 'https://chat.deepseek.com/x' })
+  assert.equal(resolved.error, 'node_unavailable')
+  assert.equal(resolved.errorCode, 'node_unavailable')
+  assert.match(resolved.detail, /not found on PATH/)
+
+  /* a seam that throws while spawning answers the same way */
+  const throwing = {
+    async resolveExecutable() { return '/usr/bin/node' },
+    spawn() { throw new Error('spawn ENOENT') },
+  }
+  const thrown = await runRequest(throwing, { url: 'https://chat.deepseek.com/x' })
+  assert.equal(thrown.error, 'node_unavailable')
+  assert.match(thrown.detail, /ENOENT/)
+})
+
+test('a child that dies with ENOENT in stderr is the same prerequisite', async () => {
+  const subprocess = {
+    async resolveExecutable() { return '/usr/bin/node' },
+    spawn: () => ({
+      stdin: { on() {}, end() {} },
+      done: Promise.resolve({ exitCode: 1 }),
+      collected: {
+        stdout: { readFrom: () => ({ text: '' }) },
+        stderr: { readFrom: () => ({ text: "spawn node ENOENT" }) },
+      },
+    }),
+  }
+  const result = await runRequest(subprocess, {})
+  assert.equal(result.errorCode, 'node_unavailable')
+  assert.match(result.detail, /ENOENT/)
+})
+
+test('an older seam without resolveExecutable still runs the request', async () => {
+  const subprocess = {
+    spawn: () => ({
+      stdin: { on() {}, end() {} },
+      done: Promise.resolve({ exitCode: 0 }),
+      collected: {
+        stdout: { readFrom: () => ({ text: JSON.stringify({ status: 200, body: '{"ok":1}' }) }) },
+        stderr: { readFrom: () => ({ text: '' }) },
+      },
+    }),
+  }
+  const result = await runRequest(subprocess, { url: 'https://chat.deepseek.com/x' })
+  assert.equal(result.status, 200)
+  assert.equal(result.body, '{"ok":1}')
+})
