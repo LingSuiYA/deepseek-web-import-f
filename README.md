@@ -44,6 +44,8 @@ Import your [chat.deepseek.com](https://chat.deepseek.com) **conversation histor
 The plugin declares `dsh.bundle` (see `package.json`), so it installs with `dsh plugin add`:
 
 ```sh
+dsh plugin add deepseek-web-import        # published on npm
+# or straight from this repository:
 dsh plugin add wpc0323/deepseek-web-import
 ```
 

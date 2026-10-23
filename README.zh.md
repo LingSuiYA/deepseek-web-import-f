@@ -43,6 +43,8 @@
 插件声明了 `dsh.bundle`（见 `package.json`），可通过 `dsh plugin add` 安装：
 
 ```sh
+dsh plugin add deepseek-web-import        # 已发布到 npm
+# 或者直接从仓库安装：
 dsh plugin add wpc0323/deepseek-web-import
 ```
 
