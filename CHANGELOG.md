@@ -9,6 +9,9 @@
   catalog 仓库提 PR**。中英 README 增加「界面预览 / Screenshots」段。
 - 说明下载量的来源：catalog 的 `downloads` 字段来自 npm 的 30 天滚动下载量，只有发布到 npm 的插件才有；
   本包暂未发布，所以市场卡片上没有数字。
+- **已发布到 npm**（`deepseek-web-import@0.2.1`）：`npmjs.com` 的 metadata 里 `repository` 指回本仓库，
+  满足 catalog `probe-npm.mjs` 的关联判定；中英 README 的安装段因此补上 `dsh plugin add deepseek-web-import`。
+  catalog 下一次 probe 会建立 npm 映射，下载量要等 npm 有统计后（实际安装后 T+1）才会出现。
 
 ### 修复历史遗留会话（文档与工具，无运行时改动）
 
