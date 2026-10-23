@@ -8,6 +8,12 @@ Import your [chat.deepseek.com](https://chat.deepseek.com) **conversation histor
 
 ---
 
+## Screenshots
+
+![The DeepSeek Chat Import settings page: sign-in state, conversation directory, and the collapsed diagnostics section](docs/screenshots/settings.png)
+
+---
+
 ## ✨ Features
 
 - A **"DeepSeek Chat Import"** page inside the settings panel

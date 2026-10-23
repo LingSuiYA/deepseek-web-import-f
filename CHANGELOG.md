@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 插件市场展示（文档与素材，无运行时改动）
+
+- 新增 `screenshots.json`（仓库根目录、`package.json` 旁边）与 `docs/screenshots/settings.png`：这是 awesome-dsh-plugin
+  catalog 的新约定——作者把截图放在自己仓库里，catalog 的 `probe-screenshots.mjs` 下一次构建自动读取，**不需要给
+  catalog 仓库提 PR**。中英 README 增加「界面预览 / Screenshots」段。
+- 说明下载量的来源：catalog 的 `downloads` 字段来自 npm 的 30 天滚动下载量，只有发布到 npm 的插件才有；
+  本包暂未发布，所以市场卡片上没有数字。
+
 ### 修复历史遗留会话（文档与工具，无运行时改动）
 
 - 新增 `tools/fix-surface-before-step.mjs`：修复 0.1.0 版本导入、在升级到 v3+ DSH 后打不开的会话。

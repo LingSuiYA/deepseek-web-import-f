@@ -8,6 +8,12 @@
 
 ---
 
+## 界面预览
+
+![「DeepSeek 对话导入」设置页：登录态、对话目录，以及折叠的诊断区](docs/screenshots/settings.png)
+
+---
+
 ## ✨ 功能
 
 - 设置面板新增 **「DeepSeek 对话导入」** 页面
