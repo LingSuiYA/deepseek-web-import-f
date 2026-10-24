@@ -5,7 +5,7 @@
 **Bring DeepSeek web conversations into DSH together with their images and documents**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Based on](https://img.shields.io/badge/based%20on-wpc0323%2Fdeepseek--web--import%200.2.0-blue)
+![Based on](https://img.shields.io/badge/based%20on-wpc0323%2Fdeepseek--web--import%200.2.1-blue)
 ![Plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4B6BFB)
 
 [中文](README.md) · [Upstream](https://github.com/wpc0323/deepseek-web-import) · [Install from zero](docs/INSTALL-FROM-ZERO.md) · [Issues](https://github.com/LingSuiYA/deepseek-web-import-f/issues)
@@ -159,10 +159,10 @@ with `git ls-remote failed`, so use route B instead.
 
 Install the upstream base first; this supplement is a patch applied on top (this route
 does not install this repository's package, it modifies the installed upstream files).
-The base is pinned to upstream `0.2.0`, commit `7727f18`, so the patch anchors stay stable.
+The base is pinned to upstream `0.2.1`, commit `4761d89`, so the patch anchors stay stable.
 
 ```sh
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/4761d89275e26d9999e2e8e596731e41d25e12a1.tar.gz
 git clone https://github.com/LingSuiYA/deepseek-web-import-f.git
 cd deepseek-web-import-f
 node tools/apply-dlc.mjs
@@ -185,8 +185,8 @@ For an intranet machine or a quick trial, at the cost of marketplace updates.
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.15.tgz
-# Windows: file:C:/path/to/deepseek-web-import-0.2.0-dlc.15.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.1-dlc.16.tgz
+# Windows: file:C:/path/to/deepseek-web-import-0.2.1-dlc.16.tgz
 ```
 
 The tarball contains `lib/`, `docs/`, `tools/`, `cordis.patch.yml` and both READMEs.
@@ -226,7 +226,7 @@ anchor, upstream changed a patched file and this repository needs a rebase first
 ## Compatibility and limits
 
 - **DSH 0.2.x** (tested on `0.2.1-rc.2`), writing session format v4; the overlay targets
-  upstream `0.2.0`, commit `7727f18`.
+  upstream `0.2.1`, commit `4761d89`.
 - Document bytes are restored, but the model context still carries only the text
   DeepSeek stored for that turn — the parsed document text was never in the history payload.
 - Replaying an imported turn with a `file` block depends on the target model adapter

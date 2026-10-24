@@ -5,7 +5,7 @@
 **把 DeepSeek 网页端的历史对话，连同图片和附件一起带进 DSH**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Based on](https://img.shields.io/badge/based%20on-wpc0323%2Fdeepseek--web--import%200.2.0-blue)
+![Based on](https://img.shields.io/badge/based%20on-wpc0323%2Fdeepseek--web--import%200.2.1-blue)
 ![Plugin](https://img.shields.io/badge/DeepSeek%20Harness-plugin-4B6BFB)
 
 [English](README.en.md) · [上游仓库](https://github.com/wpc0323/deepseek-web-import) · [从零安装](docs/INSTALL-FROM-ZERO.md) · [问题反馈](https://github.com/LingSuiYA/deepseek-web-import-f/issues)
@@ -119,10 +119,10 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 ### B. 固定上游基线 + 本地补丁层
 
-先安装上游基线，本补充作为补丁贴在其上（这条路线不安装本仓库的包，而是直接修改已安装的上游文件）。基线钉在上游 `0.2.0` 的提交 `7727f18`，保证补丁锚点稳定。
+先安装上游基线，本补充作为补丁贴在其上（这条路线不安装本仓库的包，而是直接修改已安装的上游文件）。基线钉在上游 `0.2.1` 的提交 `4761d89`，保证补丁锚点稳定。
 
 ```sh
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/4761d89275e26d9999e2e8e596731e41d25e12a1.tar.gz
 git clone https://github.com/LingSuiYA/deepseek-web-import-f.git
 cd deepseek-web-import-f
 node tools/apply-dlc.mjs
@@ -144,8 +144,8 @@ $env:DSH_PLUGIN_DIR = "C:\path\to\pkg"; node tools/apply-dlc.mjs
 ```sh
 cd deepseek-web-import-f
 npm pack
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.15.tgz
-# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.0-dlc.15.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.1-dlc.16.tgz
+# Windows 写成 file:C:/path/to/deepseek-web-import-0.2.1-dlc.16.tgz
 ```
 
 包内包含 `lib/`、`docs/`、`tools/`、`cordis.patch.yml` 和两个 README。Windows 的 cmd/PowerShell 不展开 `*`，请写实际文件名。
@@ -174,7 +174,7 @@ dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.15.tgz
 
 ## 兼容性与限制
 
-- **DSH 0.2.x**（实测 `0.2.1-rc.2`），写入会话格式 v4；补丁基线为上游 `0.2.0`（提交 `7727f18`）。
+- **DSH 0.2.x**（实测 `0.2.1-rc.2`），写入会话格式 v4；补丁基线为上游 `0.2.1`（提交 `4761d89`）。
 - 文档字节被完整保留，但模型上下文里仍只有 DeepSeek 当时存下的文本——解析后的文档正文本来就不在历史负载里。
 - 带 `file` 块的历史在续聊时需要模型适配器接受该块，建议用一条文档对话验证一次。
 - 依赖 DeepSeek 非官方接口，`userToken` 过期后需要重新保存。

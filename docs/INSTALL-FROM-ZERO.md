@@ -39,10 +39,10 @@ dsh plugin add LingSuiYA/deepseek-web-import-f
 
 ## B. 固定上游基线 + 补丁层
 
-### 1. 装上游基线（钉在 0.2.0）
+### 1. 装上游基线（钉在 0.2.1）
 
 ```sh
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/4761d89275e26d9999e2e8e596731e41d25e12a1.tar.gz
 ```
 
 固定提交而不是 `main`，这样补丁锚点不会因为上游推送而漂移。这条基线**不会自动升级**：跟进上游时换新的提交归档并重跑补丁。也**不要**用 `file:` 装本仓库的 tgz——那会放弃市场管理。
@@ -102,14 +102,14 @@ node tools/apply-dlc.mjs
 
 ```sh
 cd deepseek-web-import-f
-npm pack          # 产出 deepseek-web-import-0.2.0-dlc.N.tgz
+npm pack          # 产出 deepseek-web-import-0.2.1-dlc.N.tgz
 ```
 
 把 tgz 拷到目标机：
 
 ```sh
-dsh plugin add file:/absolute/path/deepseek-web-import-0.2.0-dlc.N.tgz
-# Windows: dsh plugin add file:C:/path/to/deepseek-web-import-0.2.0-dlc.N.tgz
+dsh plugin add file:/absolute/path/deepseek-web-import-0.2.1-dlc.N.tgz
+# Windows: dsh plugin add file:C:/path/to/deepseek-web-import-0.2.1-dlc.N.tgz
 ```
 
 - 这条路线**没有市场更新**：市场只更新能重新解析的来源（`npm:` / `github:` / 固定归档 URL）。
@@ -158,7 +158,7 @@ git show upstream/main:lib/client.js \
 ### 完全回滚到上游
 
 ```bash
-dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/7727f18e3996713dec1b7046d07897c19efed5ae.tar.gz
+dsh plugin add https://github.com/wpc0323/deepseek-web-import/archive/4761d89275e26d9999e2e8e596731e41d25e12a1.tar.gz
 ```
 
 同名替换，补丁层随之消失。
